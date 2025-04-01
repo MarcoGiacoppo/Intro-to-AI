@@ -1,3 +1,6 @@
+import math
+import heapq
+
 # ------------------------
 # Graph Representation
 # ------------------------
@@ -64,7 +67,7 @@ def dfs(graph, start, goals):
 
     while stack:
         node, path = stack.pop()
-
+        # Repeated state checks
         if node in visited:
             continue
         visited.add(node)
@@ -109,6 +112,126 @@ def bfs(graph, start, goals):
 
     return None, node_count, None  # No goal found
 
+# ------------------------------
+# Greedy Best-Frist Search (GBFS)
+# ------------------------------
+def heuristic(graph, node, goals):
+        """Calculate the Euclidean distance to the nearest goal."""
+        x1, y1 = graph.nodes[node]
+        return min(
+            math.sqrt((x1 - graph.nodes[g][0])**2 + (y1 - graph.nodes[g][1])**2)
+            for g in goals
+        )
+
+def gbfs(graph, start, goals):
+    frontier = []
+    heapq.heappush(frontier, (heuristic(graph, start, goals), start, [start]))
+    visited = set()
+    node_count = 0
+
+    while frontier:
+        _, current, path = heapq.heappop(frontier)
+
+        if current in visited:
+            continue
+        visited.add(current)
+
+        if current in goals:
+            return current, node_count, path
+
+        for neighbor, _ in sorted(graph.edges.get(current, [])):
+            if neighbor not in visited:
+                h = heuristic(graph, neighbor, goals)
+                heapq.heappush(frontier, (h, neighbor, path + [neighbor]))
+                node_count += 1
+
+    return None, node_count, None
+
+# ---------
+# A* Search
+# ---------
+def astar(graph, start, goals):
+    frontier = []
+    heapq.heappush(frontier, (heuristic(graph, start, goals), 0, start, [start]))  # (f, g, node, path)
+    visited = set()
+    node_count = 0
+
+    while frontier:
+        f, g, current, path = heapq.heappop(frontier)
+
+        if current in visited:
+            continue
+        visited.add(current)
+
+        if current in goals:
+            return current, node_count, path
+
+        # This code block here shows that we're mainting g (path cost) and f = g + h
+        for neighbor, cost in sorted(graph.edges.get(current, [])):
+            if neighbor not in visited:
+                g_new = g + cost
+                h = heuristic(graph, neighbor, goals)
+                f_new = g_new + h
+                heapq.heappush(frontier, (f_new, g_new, neighbor, path + [neighbor]))
+                node_count += 1
+
+    return None, node_count, None
+
+
+# ----------------------------------------------------------------------------
+# CUS1: Reverse-BFS - prefer deeper paths first (a hybrid between DFS and BFS)
+# ----------------------------------------------------------------------------
+def cus1(graph, start, goals):
+    stack = [(start, [start])]
+    visited = set()
+    node_count = 0
+
+    while stack:
+        node, path = stack.pop(0)  # pop from front to mimic 'oldest-deepest'
+
+        if node in visited:
+            continue
+        visited.add(node)
+
+        if node in goals:
+            return node, node_count, path
+
+        for neighbor, _ in reversed(sorted(graph.edges.get(node, []))):
+            if neighbor not in visited:
+                stack.insert(0, (neighbor, path + [neighbor]))  # insert at front
+                node_count += 1
+
+    return None, node_count, None
+
+
+# -----------------------------------------------------------------------------------------
+# CUS2: Prioritize lowest cost path with slight bias toward goal proximity (but not full A*)
+# -----------------------------------------------------------------------------------------
+def cus2(graph, start, goals):
+    frontier = []
+    heapq.heappush(frontier, (0, heuristic(graph, start, goals), start, [start]))  # (g, h, node, path)
+    visited = set()
+    node_count = 0
+
+    while frontier:
+        g, h, current, path = heapq.heappop(frontier)
+
+        if current in visited:
+            continue
+        visited.add(current)
+
+        if current in goals:
+            return current, node_count, path
+
+        for neighbor, cost in sorted(graph.edges.get(current, [])):
+            if neighbor not in visited:
+                g_new = g + cost
+                h_new = heuristic(graph, neighbor, goals)
+                heapq.heappush(frontier, (g_new, h_new, neighbor, path + [neighbor]))
+                node_count += 1
+
+    return None, node_count, None
+
 
 # ------------------------
 # Main Execution (Command-Line Interface)
@@ -133,8 +256,16 @@ if __name__ == "__main__":
         goal, count, path = dfs(graph, graph.origin, graph.destinations)
     elif method == "BFS":
         goal, count, path = bfs(graph, graph.origin, graph.destinations)
+    elif method == "GBFS":
+        goal, count, path = gbfs(graph, graph.origin, graph.destinations)
+    elif method == "AS":
+        goal, count, path = astar(graph, graph.origin, graph.destinations)
+    elif method == "CUS1":
+        goal, count, path = cus1(graph, graph.origin, graph.destinations)
+    elif method == "CUS2":
+        goal, count, path = cus2(graph, graph.origin, graph.destinations)
     else:
-        print("Unsupported method. Use DFS or BFS.")
+        print("Unsupported method. Use DFS, BFS, GBFS, or AS.")
         sys.exit(1)
 
     # Print the output in the required format
@@ -151,6 +282,6 @@ if __name__ == "__main__":
 # HOW TO RUN THIS PROGRAM
 # ------------------------
 # In your terminal or command prompt:
-# python3 search.py PathFinder-test.txt BFS
+# python3 main.py PathFinder-test.txt BFS
 # or
-# python3 search.py PathFinder-test.txt DFS
+# python3 main.py PathFinder-test.txt DFS
