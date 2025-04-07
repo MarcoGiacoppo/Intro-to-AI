@@ -1,0 +1,14 @@
+================================================
+The goal is disconnected entirely from the graph
+================================================
+
+Nodes:
+1: (0,0)
+2: (1,1)
+3: (2,2)
+Edges:
+(1,2): 1
+Origin:
+1
+Destinations:
+3
