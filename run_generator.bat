@@ -1,13 +1,18 @@
-{\rtf1\ansi\ansicpg1252\cocoartf2761
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
-{\colortbl;\red255\green255\blue255;}
-{\*\expandedcolortbl;;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+@echo off
+setlocal enabledelayedexpansion
 
-\f0\fs24 \cf0 @echo off\
-echo Generating test cases...\
-python generator.py\
-echo Done!\
-pause\
-}
+:: List of search methods
+set METHODS=BFS DFS GBFS AS CUS1 CUS2
+
+:: Loop through files
+for %%F in (Test_*.txt) do (
+    echo Running tests on %%F
+    for %%M in (%METHODS%) do (
+        echo Running method: %%M
+        python3 search.py %%F %%M
+        echo ----------------------------
+    )
+)
+
+echo All test cases completed.
+pause

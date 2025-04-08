@@ -1,3 +1,4 @@
+from visualizer import Visualizer
 import math
 import heapq
 
@@ -36,7 +37,8 @@ class Graph:
                     if section == "nodes":
                         node_id, coords = line.split(": ")
                         x, y = map(int, coords.strip("()").split(","))
-                        self.nodes[int(node_id)] = (x, y)
+                        scale = 80
+                        self.nodes[int(node_id)] = (x * scale, y * scale)
 
                     elif section == "edges":
                         edge, cost = line.split(": ")
@@ -251,12 +253,13 @@ import sys
 import time
 if __name__ == "__main__":
     # Check correct number of arguments
-    if len(sys.argv) != 3:
-        print("Usage: python search.py <filename> <method>")
+    if len(sys.argv) < 3:
+        print("Usage: python search.py <filename> <method> [--visualize]")
         sys.exit(1)
 
     filename = sys.argv[1]
     method = sys.argv[2].upper()  # e.g., BFS, DFS
+    visualize = "--visualize" in sys.argv
 
     # Load graph from file
     graph = Graph()
@@ -286,6 +289,17 @@ if __name__ == "__main__":
         print(f"{filename} {method}")
         print(f"{goal} {count}")
         print(" -> ".join(map(str, path)))
+
+        # Prepare edges in (start, end) format for visualizer
+        edge_list = []
+        for start, connections in graph.edges.items():
+            for end, _ in connections:
+                edge_list.append((start, end))
+
+        # Run visualizer
+        if visualize:
+            Visualizer(graph.nodes, edge_list, path).run()
+
     else:
         print(f"{filename} {method}")
         print("No path found.")
@@ -298,3 +312,8 @@ if __name__ == "__main__":
 # python3 main.py PathFinder-test.txt BFS
 # or
 # python3 main.py PathFinder-test.txt DFS
+# -----------
+# Extensions 
+# -----------
+# Try using pyglet to visualize the nodes visited
+# python3 search.py PathFinder-test.txt <method> --visualize
