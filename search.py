@@ -244,9 +244,9 @@ def cus2(graph, start, goals):
     return None, node_count, None
 
 
-# ------------------------
+# --------------------------------------
 # Main Execution (Command-Line Interface)
-# ------------------------
+# --------------------------------------
 import sys
 import time
 if __name__ == "__main__":
