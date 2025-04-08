@@ -304,6 +304,6 @@ if __name__ == "__main__":
 # HOW TO RUN THIS PROGRAM
 # ------------------------
 # In your terminal or command prompt:
-# python3 main.py PathFinder-test.txt BFS
+# python3 search.py PathFinder-test.txt BFS
 # or
-# python3 main.py PathFinder-test.txt DFS
+# python3 search.py PathFinder-test.txt DFS
