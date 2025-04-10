@@ -2,12 +2,12 @@ import random
 
 def generate_test_case(
     filename,
-    num_nodes=3,
+    num_nodes=8,
     coord_range=(0, 10),
-    max_edges_per_node=3,
+    max_edges_per_node=2,
     cost_range=(1, 10),
     bidirectional_chance=0.5,
-    num_destinations=2
+    num_destinations=1
 ):
     nodes = {}
     edges = {}
