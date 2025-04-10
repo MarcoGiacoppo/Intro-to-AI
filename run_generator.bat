@@ -9,7 +9,7 @@ for %%F in (Test_*.txt) do (
     echo Running tests on %%F
     for %%M in (%METHODS%) do (
         echo Running method: %%M
-        python search.py %%F %%M
+        python search.py %%F %%M debug
         echo ----------------------------
     )
 )

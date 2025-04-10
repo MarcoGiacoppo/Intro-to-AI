@@ -324,4 +324,4 @@ if __name__ == "__main__":
 # -----------
 # pyglet needs to be installed for visualisation: (pip install --upgrade --user pyglet)
 # Try using pyglet to visualize the nodes visited
-# python search.py PathFinder-test.txt <method> --visualize
+# python search.py Test_1.txt BFS --visualize
