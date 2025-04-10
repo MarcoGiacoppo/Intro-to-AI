@@ -1,3 +1,4 @@
+from visualizer import Visualizer
 import math
 import heapq
 
@@ -36,7 +37,8 @@ class Graph:
                     if section == "nodes":
                         node_id, coords = line.split(": ")
                         x, y = map(int, coords.strip("()").split(","))
-                        self.nodes[int(node_id)] = (x, y)
+                        scale = 80
+                        self.nodes[int(node_id)] = (x * scale, y * scale)
 
                     elif section == "edges":
                         edge, cost = line.split(": ")
@@ -244,19 +246,20 @@ def cus2(graph, start, goals):
     return None, node_count, None
 
 
-# ------------------------
+# --------------------------------------
 # Main Execution (Command-Line Interface)
-# ------------------------
+# --------------------------------------
 import sys
 import time
 if __name__ == "__main__":
     # Check correct number of arguments
-    if len(sys.argv) != 3:
-        print("Usage: python search.py <filename> <method>")
+    if len(sys.argv) < 3:
+        print("Usage: python search.py <filename> <method> [--visualize]")
         sys.exit(1)
 
     filename = sys.argv[1]
     method = sys.argv[2].upper()  # e.g., BFS, DFS
+    visualize = "--visualize" in sys.argv
 
     # Load graph from file
     graph = Graph()
@@ -284,17 +287,19 @@ if __name__ == "__main__":
     # Print the output in the required format
     if path:
         print(f"{filename} {method}")
-        print(f"goal: {goal}")
-        print(f"Nodes Counted: {count}")
-        print(f"Nodes Visited")
-        for node in visited:
-         print(node, end=", ")
-
-        print(f"\nPath Taken:")
+        print(f"{goal} {count}")
         print(" -> ".join(map(str, path)))
-        if (cost > 0):
-            print(f"Total Cost: {cost}")
-        print(f"Time taken: {end - start:.10f} seconds")
+
+        # Prepare edges in (start, end) format for visualizer
+        edge_list = []
+        for start, connections in graph.edges.items():
+            for end, _ in connections:
+                edge_list.append((start, end))
+
+        # Run visualizer
+        if visualize:
+            Visualizer(graph.nodes, edge_list, path).run()
+
     else:
         print(f"{filename} {method}")
         print("No path found.")
@@ -303,7 +308,14 @@ if __name__ == "__main__":
 # ------------------------
 # HOW TO RUN THIS PROGRAM
 # ------------------------
+
 # In your terminal or command prompt:
-# python3 search.py PathFinder-test.txt BFS
+# python search.py PathFinder-test.txt BFS
 # or
-# python3 search.py PathFinder-test.txt DFS
+# python search.py PathFinder-test.txt DFS
+# -----------
+# Extensions 
+# -----------
+# pyglet needs to be installed for visualisation: (pip install --upgrade --user pyglet)
+# Try using pyglet to visualize the nodes visited
+# python search.py PathFinder-test.txt <method> --visualize
