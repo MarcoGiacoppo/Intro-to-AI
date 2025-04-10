@@ -254,12 +254,13 @@ import time
 if __name__ == "__main__":
     # Check correct number of arguments
     if len(sys.argv) < 3:
-        print("Usage: python search.py <filename> <method> [--visualize]")
+        print("Usage: python search.py <filename> <method> [--visualize] [debug]")
         sys.exit(1)
 
     filename = sys.argv[1]
     method = sys.argv[2].upper()  # e.g., BFS, DFS
     visualize = "--visualize" in sys.argv
+    debug = "debug" in sys.argv
 
     # Load graph from file
     graph = Graph()
@@ -299,7 +300,12 @@ if __name__ == "__main__":
         # Run visualizer
         if visualize:
             Visualizer(graph.nodes, edge_list, path).run()
-
+        
+        if debug:
+            print("Debug Information:")
+            print(f"Visited nodes: {visited}")
+            print(f"Path cost: {cost}")
+            print(f"Time taken: {end - start:.4f} seconds")
     else:
         print(f"{filename} {method}")
         print("No path found.")

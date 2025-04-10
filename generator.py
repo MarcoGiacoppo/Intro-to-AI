@@ -66,4 +66,4 @@ def generate_multiple(
         filename = f"{base_filename}{i + 1}.txt"
         generate_test_case(filename, **kwargs)
         print(f"Generated {filename}")
-generate_multiple(10, "Test_")
+generate_multiple(1, "Test_")
