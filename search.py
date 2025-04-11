@@ -285,6 +285,7 @@ if __name__ == "__main__":
         print("Unsupported method. Use DFS, BFS, GBFS, or AS.")
         sys.exit(1)
     end = time.perf_counter()  # End timing
+    elapsed_time = end - start  # Calculate elapsed time
     # Print the output in the required format
     if path:
         print(f"{filename} {method}")
@@ -305,7 +306,7 @@ if __name__ == "__main__":
             print("Debug Information:")
             print(f"Visited nodes: {visited}")
             print(f"Path cost: {cost}")
-            print(f"Time taken: {end - start:.4f} seconds")
+            print(f"Time taken: {elapsed_time:.8f} seconds")
     else:
         print(f"{filename} {method}")
         print("No path found.")
