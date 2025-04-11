@@ -185,9 +185,9 @@ def astar(graph, start, goals):
 
 
 # ----------------------------------------------------------------------------
-# CUS1: Informed, A* where g(n) is number of steps taken, and h(n) is the euclidean distance to the goal.
+# CUS2: Informed, A* where g(n) is number of steps taken, and h(n) is the euclidean distance to the goal.
 # ----------------------------------------------------------------------------
-def cus1(graph, start, goals): #may not be allowed
+def cus2(graph, start, goals): #may not be allowed
     frontier = []
     heapq.heappush(frontier, (heuristic(graph, start, goals), 0, start, [start], 0))  # (f, g, node, path)
     visited = set()
@@ -219,9 +219,9 @@ def cus1(graph, start, goals): #may not be allowed
 
 
 # -----------------------------------------------------------------------------------------
-# CUS2: Uniform Cost Search - prefer lower cost paths first
+# CUS1: Uniform Cost Search - prefer lower cost paths first
 # -----------------------------------------------------------------------------------------
-def cus2(graph, start, goals):
+def cus1(graph, start, goals):
     frontier = []
     heapq.heappush(frontier, (0, start, [start], 0))  # (g, node, path)
     visited = set()
