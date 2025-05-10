@@ -39,10 +39,8 @@ def heuristic_fn(n, goal):
         return 0
     return haversine(m1["latitude"], m1["longitude"], m2["latitude"], m2["longitude"])
 
-def predict_travel_time_model(scats_id, model_name="lstm"):
-    scats_id = str(scats_id).zfill(4)
-    hour = datetime.now().hour
-
+@st.cache_resource(show_spinner=False)
+def load_prediction_components(model_name):
     model_path = f"../models/{model_name}_model.keras"
     scaler_path = f"../models/{model_name}_scaler.pkl"
     encoder_path = f"../models/{model_name}_scats_encoder.pkl"
@@ -50,6 +48,14 @@ def predict_travel_time_model(scats_id, model_name="lstm"):
     model = load_model(model_path, compile=False)
     scaler = joblib.load(scaler_path)
     encoder = joblib.load(encoder_path)
+    return model, scaler, encoder
+
+
+def predict_travel_time_model(scats_id, model_name="lstm"):
+    scats_id = str(scats_id).zfill(4)
+    hour = datetime.now().hour
+
+    model, scaler, encoder = load_prediction_components(model_name)
 
     if scats_id not in encoder.classes_:
         return 1.0
@@ -65,17 +71,29 @@ def predict_travel_time_model(scats_id, model_name="lstm"):
     speed = max(5.0, 100 * (1 - a * (pred_volume ** b)))
     return round(60 / speed, 2)
 
+travel_time_cache = {}
+
 def cost_fn(a, b):
     a = str(a).zfill(4)
     b = str(b).zfill(4)
+
+    # Use cached result if already computed
+    if b in travel_time_cache:
+        travel_time = travel_time_cache[b]
+    else:
+        travel_time = predict_travel_time_model(b, st.session_state.model_choice)
+        travel_time_cache[b] = travel_time
+
     if a not in metadata or b not in metadata:
         return float("inf")
+
     m1, m2 = metadata[a], metadata[b]
     if not all([m1["latitude"], m1["longitude"], m2["latitude"], m2["longitude"]]):
         return float("inf")
+
     dist = haversine(m1["latitude"], m1["longitude"], m2["latitude"], m2["longitude"])
-    travel_time = predict_travel_time_model(b, st.session_state.model_choice)
     return dist * travel_time
+
 
 # === Streamlit UI ===
 st.set_page_config(page_title="TBRGS - Route Finder", layout="wide")
@@ -173,7 +191,6 @@ if run_button:
                 common = roads_from & roads_to
                 road = sorted(common)[0] if common else "?"
                 rows.append({
-                    "Step": i,
                     "From": from_id,
                     "To": to_id,
                     "Time (min)": round(delta, 2),
@@ -205,7 +222,8 @@ for name, result in st.session_state.results.items():
             st.markdown(f"<p style='font-size:18px;'><b>Route:</b> {' → '.join(result['path'])}</p>", unsafe_allow_html=True)
             st.markdown(f"<p style='font-size:16px;'><b>Estimated Travel Time:</b> {result['total']:.2f} minutes</p>", unsafe_allow_html=True)
             df = pd.DataFrame(result["table"])
-            df.index = [''] * len(df)  # clear row index
+            df.index = range(1, len(df) + 1)
+            df.index.name = "Step"
             st.dataframe(df)
 
             paths_for_map[name] = result["path"]
