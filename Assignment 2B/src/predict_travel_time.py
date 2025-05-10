@@ -1,38 +1,57 @@
 import numpy as np
 from datetime import datetime
-from keras.models import load_model
+from tensorflow.keras.models import load_model
 import joblib
+import sys
+import os
 
-# === Load model and scalers ===
-MODEL_PATH = "../models/lstm_model.h5"
-SCALER_PATH = "../models/scaler.pkl"
+# === CONFIG ===
+SEQ_LENGTH = 24
+MODEL_NAME = "lstm"  # Change to 'gru' or 'tcn' if needed
+MODEL_PATH = f"../models/{MODEL_NAME}_model.keras"
+SCALER_PATH = f"../models/{MODEL_NAME}_scaler.pkl"
+ENCODER_PATH = f"../models/{MODEL_NAME}_scats_encoder.pkl"
 
+# === Load model, scaler, encoder ===
 model = load_model(MODEL_PATH, compile=False)
 scaler = joblib.load(SCALER_PATH)
+scats_encoder = joblib.load(ENCODER_PATH)
 
 def predict_travel_time(scats_id: str, hour: int = None) -> float:
     """
-    Predicts traffic volume using trained LSTM and converts to estimated travel time in minutes per km.
+    Predicts travel time per km for a SCATS site using the selected ML model.
+    Note: `hour` is accepted for compatibility but not used in the model.
     """
     if hour is None:
-        hour = datetime.now().hour
+        hour = datetime.now().hour  # Note: hour is unused in current model
 
-    try:
-        scats_id = int(scats_id)
-    except:
-        return 1.0  # fallback in case of bad input
+    scats_id = str(scats_id).zfill(4)
+    if scats_id not in scats_encoder.classes_:
+        return 1.0  # Fallback if unknown SCATS site
 
-    # Prepare input
-    input_array = np.array([[scats_id, hour]])
-    input_scaled = scaler.transform(input_array)
-    input_seq = np.expand_dims(input_scaled, axis=0)  # shape: (1, 1, 2)
+    scats_idx = scats_encoder.transform([scats_id])[0]
 
-    # Predict
-    predicted_volume = model.predict(input_seq, verbose=0)[0][0]
+    # Generate dummy sequence — always the same input
+    dummy_seq = np.full((1, SEQ_LENGTH, 1), 0.5)
+    input_scats = np.array([[scats_idx]])
 
-    # Convert volume to speed → travel time
-    a, b = 0.001, 1.6  # from the parabolic formula PDF
-    speed = max(5.0, 100 * (1 - a * (predicted_volume ** b)))
+    # Predict scaled volume
+    pred_scaled = model.predict([dummy_seq, input_scats], verbose=0)[0][0]
+    pred_volume = scaler.inverse_transform([[pred_scaled]])[0][0]
+
+    # Convert volume → speed → travel time (min/km)
+    a, b = 0.001, 1.6
+    speed = max(5.0, 100 * (1 - a * (pred_volume ** b)))
     travel_time = round(60 / speed, 2)
 
     return travel_time
+
+# === CLI test ===
+if __name__ == "__main__":
+    scats_id = input("Enter SCATS ID (e.g., 0970): ").strip().zfill(4)
+    try:
+        hour = int(input("Enter hour (0–23): ").strip())
+    except ValueError:
+        hour = datetime.now().hour
+
+    print(f"⏱ Travel time estimate: {predict_travel_time(scats_id, hour):.2f} min/km")

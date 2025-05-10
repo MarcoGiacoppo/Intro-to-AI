@@ -1,49 +1,129 @@
-How to use the program:
+# Traffic-Based Route Guidance System (TBRGS)
 
-1. Install Required Libraries
-   Make sure you have Python 3 installed. Install all the required packages by running:
-   pip install pandas numpy scikit-learn matplotlib tensorflow
+This project implements a machine learning-enhanced route guidance system for the Boroondara area. It includes search algorithms, ML traffic prediction models, visualizations, and a GUI for user interaction.
 
-2. Prepare the Dataset
-   Place the preprocessed traffic dataset called "Oct_2006_Boorondara_Traffic_Flow_Data.csv" inside the folder:
-   data/processed/
+---
 
-if not there, just run preprocess.py
+## 📁 Project Structure
 
-3. Train the LSTM Model
-   Run the training script by typing:
-   python src/train_lstm.py
-   This script will:
+```
+├── data/
+│   ├── raw/                         # Original SCATS datasets
+│   ├── processed/                   # Cleaned and structured dataset
+│   ├── graph/                       # Generated adjacency and metadata files
+├── models/                          # Trained ML models (LSTM, GRU, TCN)
+├── results/                         # Evaluation results and predicted traffic flow CSVs
+├── images/                          # Plots and visualizations for the report
+├── src/                             # All source code files
+│   ├── train_models.py              # Train and evaluate ML models
+│   ├── predict_travel_time.py      # Predict travel time using trained models
+│   ├── route_finder.py             # Route search engine with heuristics
+│   ├── gui.py                      # Interactive GUI for user input and route visualization
+│   ├── plot_flow_comparison.py     # Line chart: true vs predicted flow
+│   ├── plot_time_series_comparison.py # Clean time series chart by timestamp
+│   ├── generate_adjacency.py       # Build graph from SCATS site links
+│   ├── generate_sites_metadata.py  # Create coordinates and metadata
+│   ├── preprocess.py               # Prepares the dataset for training
+│   ├── visualize_route.py          # Matplotlib route plotting tool
+│   ├── predict_and_convert.py      # Predicts and converts traffic volume to speed manually
+│   └── search_algorithms.py        # DFS, BFS, UCS, A* algorithms
+```
 
-Train a model on traffic volumes for SCATS site 0970
+---
 
-Save the trained model to: models/lstm_model.h5
+## 🛠 Setup Instructions
 
-Save the evaluation results to: results/model_evaluation.csv
+1. **Install dependencies**
 
-4. Find the Best Route Between Two SCATS Sites
-   Run the route finder script:
-   python src/route_finder.py
-   The program will prompt you to enter:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-An origin SCATS number (e.g., 2000)
+2. **Prepare data**
 
-A destination SCATS number (e.g., 3002)
-It will then:
+   ```bash
+   python3 src/generate_adjacency.py
+   python3 src/generate_sites_metadata.py
+   ```
 
-Predict traffic flow at each site
+3. **Preprocess traffic data**
 
-Convert traffic volume into estimated travel time
+   ```bash
+   python3 src/preprocess.py
+   ```
 
-Use A\* to find the best path
+4. **Train all ML models (LSTM, GRU, TCN)**
+   ```bash
+   python3 src/train_models.py --model all
+   ```
+   Trained models and scalers will be saved to `/models`. Flow predictions are saved to `/results`.
 
-Show the full route with step-by-step site IDs, time taken, and connected roads
+---
 
-5. Visualize the Route (Optional)
-   If you want to see the route drawn on a map using latitude and longitude:
+## 🧠 Model Evaluation and Visualization
 
-Open the script "visualize_route.py"
+### Generate Evaluation Table
 
-Run:
-python src/visualize_route.py
-pick origin and destination
+No action needed — metrics like MAE, RMSE, R², MAPE are automatically saved to:
+
+```
+/results/model_evaluation.csv
+```
+
+### Plot Time Series
+
+```bash
+python3 src/plot_time_series_comparison.py
+```
+
+Generates:
+
+```
+/images/flow_time_series_comparison.png
+```
+
+---
+
+## 🧭 Route Finding
+
+### Terminal (CLI) Mode
+
+```bash
+python3 src/route_finder.py
+```
+
+Allows search via CLI with algorithm and node input.
+
+### GUI Mode (Preferred)
+
+```bash
+python3 src/gui.py
+```
+
+- Input origin and destination SCATS site numbers
+- Select ML model and search algorithm
+- View best path and travel time estimate
+- Route is plotted on a 2D map
+
+---
+
+## 📊 How Travel Time is Predicted
+
+1. Trained ML models predict traffic volume at a given SCATS site
+2. Volume is converted to speed via a parabolic formula
+3. Travel time is computed as `60 / speed`
+
+---
+
+## ✅ Evaluation Metrics
+
+Stored in `/results/model_evaluation.csv` with:
+
+- MAE (Mean Absolute Error)
+- RMSE (Root Mean Squared Error)
+- R² (Coefficient of Determination)
+- MAPE (Mean Absolute Percentage Error)
+
+You can compare them using `plot_metric_comparison.py`
+
+---

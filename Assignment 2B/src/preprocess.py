@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 
-INPUT_XLS = "../data/Scats Data October 2006.xls"
+INPUT_XLS = "../data/raw/Scats Data October 2006.xls"
 OUTPUT_CSV = "../data/processed/Oct_2006_Boorondara_Traffic_Flow_Data.csv"
 
 def extract_all_required_columns():
@@ -12,7 +12,7 @@ def extract_all_required_columns():
     df.columns = [str(col).strip() for col in df.columns]
 
     # Identify all V00–V95 columns
-    v_cols = [col for col in df.columns if col.startswith("V")]
+    v_cols = [col for col in df.columns if col.startswith("V") and col[1:].isdigit()]
 
     # Full list of required non-V columns (as per your screenshot)
     meta_cols = [

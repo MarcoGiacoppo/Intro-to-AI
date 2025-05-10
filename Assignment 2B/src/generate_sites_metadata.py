@@ -5,7 +5,7 @@ from collections import defaultdict
 import os
 
 # === Load data ===
-xls_path = "../data/Scats Data October 2006.xls"
+xls_path = "../data/raw/Scats Data October 2006.xls"
 df_data = pd.read_excel(xls_path, sheet_name="Data", header=1)
 df_summary = pd.read_excel(xls_path, sheet_name="Summary Of Data", header=3)
 
@@ -25,15 +25,14 @@ for _, row in df_summary.iterrows():
 def extract_roads(location):
     if not isinstance(location, str):
         return []
-
-    # Remove directional components like "E of", "N of", etc.
     cleaned = re.sub(r"\b(?:N|S|E|W|NE|NW|SE|SW)\b\s+of\b", "", location)
     cleaned = re.sub(r"\bof\b", "", cleaned)
 
-    # Extract uppercase road-like tokens (e.g., WARRIGAL_RD, HIGH_ST, BURWOOD_HWY)
+    # Extract uppercase road-like tokens
     matches = re.findall(r"[A-Z]+(?:_[A-Z]+)+", cleaned)
 
-    return matches
+    # Normalize names like WARRIGAL_RD to WARRIGAL_RD (no spaces, consistent casing)
+    return [m.replace(" ", "_").replace("__", "_").strip() for m in matches]
 
 site_metadata = {}
 
@@ -53,7 +52,7 @@ for site_id, locations in site_locations.items():
         "latitude": float(lat) if lat else None,
         "longitude": float(lon) if lon else None,
         "locations": locations,
-        "connected_roads": sorted(roads),
+        "connected_roads": sorted(roads) if roads else [],
     }
 
 # === Save to JSON ===
