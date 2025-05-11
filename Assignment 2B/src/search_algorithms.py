@@ -19,7 +19,7 @@ def dfs(start, goal, get_neighbors, cost_fn, heuristic_fn):
             if neighbor not in visited:
                 edge_cost = cost_fn(current, neighbor)
                 segment_costs[(current, neighbor)] = edge_cost
-                new_cost = cost + edge_cost
+                new_cost = cost + edge_cost + 0.5
                 stack.append((neighbor, path + [neighbor], new_cost))
 
     return None, None, {}
@@ -39,7 +39,7 @@ def bfs(start, goal, get_neighbors, cost_fn, heuristic_fn):
                 visited.add(neighbor)
                 edge_cost = cost_fn(current, neighbor)
                 segment_costs[(current, neighbor)] = edge_cost
-                new_cost = cost + edge_cost
+                new_cost = cost + edge_cost + 0.5
                 queue.append((neighbor, path + [neighbor], new_cost))
 
     return None, None, {}

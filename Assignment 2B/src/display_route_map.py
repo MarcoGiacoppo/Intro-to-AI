@@ -9,6 +9,7 @@ def display_route_map(paths: dict, metadata: dict, colors: dict):
 
     # Plot all SCATS sites
     for sid, info in metadata.items():
+        sid = str(sid)
         folium.CircleMarker(
             location=[info["latitude"], info["longitude"]],
             radius=3,
@@ -20,7 +21,7 @@ def display_route_map(paths: dict, metadata: dict, colors: dict):
 
     # Draw each path with a different color
     for label, path in paths.items():
-        route_coords = [[metadata[sid]["latitude"], metadata[sid]["longitude"]] for sid in path]
+        route_coords = [[metadata[str(sid)]["latitude"], metadata[str(sid)]["longitude"]] for sid in path]
         folium.PolyLine(
             route_coords,
             color=colors.get(label, "blue"),
