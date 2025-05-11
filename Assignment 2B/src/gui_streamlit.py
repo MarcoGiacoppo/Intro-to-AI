@@ -96,12 +96,34 @@ st.set_page_config(page_title="TBRGS - Route Finder", layout="wide")
 st.markdown("""
     <style>
     .block-container {
-        max-width: 1100px;
+        max-width: 1000px;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
         margin: auto;
-        padding: 2rem 1rem;
     }
+    .stSelectbox > div, .stDateInput > div, .stNumberInput > div {
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+    }
+    .stSelectbox label, .stNumberInput label {
+        font-size: 0.85rem;
+        margin-bottom: 0.2rem;
+    }
+    .stButton button {
+        padding: 0.4rem 0.9rem;
+        font-size: 0.88rem;
+    }
+    .stMarkdown h2, .stMarkdown h3 {
+        margin-bottom: 0.5rem;
+        font-size: 1.2rem;
+    }
+    .stDataFrameContainer {
+        padding: 0rem;
+    }
+            
     </style>
 """, unsafe_allow_html=True)
+
 
 st.markdown("<h1 style='text-align: center;'>🛣️ Traffic-Based Route Guidance System</h1>", unsafe_allow_html=True)
 
@@ -110,29 +132,43 @@ if "results" not in st.session_state:
 
 st.markdown("## 🚦 Select Route Parameters")
 
-left_pad, center, right_pad = st.columns([1, 2.5, 1])
+# Centered layout
+left_pad, center, right_pad = st.columns([0.1, 2.2, 0.1])
 
 with center:
     col1, col2 = st.columns(2)
     with col1:
-        origin = st.selectbox("🛫 Origin SCATS ID", site_ids, index=site_ids.index("970"))
+        with st.container():
+            st.markdown('<div style="width:100%">', unsafe_allow_html=True)
+            origin = st.selectbox("🛫 Origin SCATS ID", site_ids, index=site_ids.index("970"), key="origin")
+            st.markdown('</div>', unsafe_allow_html=True)
     with col2:
-        destination = st.selectbox("🏁 Destination SCATS ID", site_ids, index=site_ids.index("2000"))
+        with st.container():
+            st.markdown('<div style="width:100%">', unsafe_allow_html=True)
+            destination = st.selectbox("🏁 Destination SCATS ID", site_ids, index=site_ids.index("2000"), key="destination")
+            st.markdown('</div>', unsafe_allow_html=True)
 
     col3, col4 = st.columns(2)
     with col3:
-        model_choice = st.selectbox("🧠 Prediction Model", ["lstm", "gru", "tcn"])
+        with st.container():
+            st.markdown('<div style="width:100%">', unsafe_allow_html=True)
+            model_choice = st.selectbox("🧠 Prediction Model", ["lstm", "gru", "tcn"], key="model")
+            st.markdown('</div>', unsafe_allow_html=True)
     with col4:
-        search_algo = st.selectbox("🔍 Search Algorithm", ["All", "DFS", "BFS", "UCS", "A*"])
+        with st.container():
+            st.markdown('<div style="width:100%">', unsafe_allow_html=True)
+            search_algo = st.selectbox("🔍 Search Algorithm", ["All", "DFS", "BFS", "UCS", "A*"], key="search")
+            st.markdown('</div>', unsafe_allow_html=True)
 
     st.session_state.model_choice = model_choice
     run_button = st.button("🚗 Find Route", type="primary")
+
 
 # === Route Finding Logic ===
 if run_button:
     travel_time_cache.clear()
     all_searches = search_algo == "All"
-    search_fn_map = {"DFS": dfs, "BFS": bfs, "UCS": ucs, "A*": astar}
+    search_fn_map = {"A*": astar, "BFS": bfs, "UCS": ucs, "DFS": dfs}
     search_methods = search_fn_map if all_searches else {search_algo: search_fn_map[search_algo]}
     st.session_state.results.clear()
 
@@ -180,7 +216,7 @@ if run_button:
         except Exception as e:
             st.session_state.results[name] = {"path": None, "error": str(e)}
 
-colors = {"DFS": "orange", "BFS": "purple", "UCS": "blue", "A*": "green"}
+colors = {"DFS": "black", "BFS": "purple", "UCS": "blue", "A*": "green"}
 paths_for_map = {}
 
 st.markdown("## 📈 Search Results")
