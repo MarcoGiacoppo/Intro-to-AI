@@ -27,21 +27,28 @@ for sid, info in metadata.items():
 adjacency = defaultdict(set)
 MAX_DISTANCE = 3.0  # up to 3 km
 
+from operator import itemgetter
+
 for road, site_ids in road_to_sites.items():
-    site_list = list(site_ids)
-    for i in range(len(site_list)):
-        for j in range(i + 1, len(site_list)):
-            sid1, sid2 = site_list[i], site_list[j]
-            site1, site2 = metadata[sid1], metadata[sid2]
+    site_list = []
+    for sid in site_ids:
+        info = metadata[sid]
+        lat, lon = info["latitude"], info["longitude"]
+        if lat is not None and lon is not None:
+            site_list.append((sid, lat, lon))
+    
+    # Sort by approximate direction (latitude then longitude)
+    site_list.sort(key=itemgetter(1, 2))  # sort by (lat, lon)
 
-            # Skip if missing location
-            if not all([site1["latitude"], site1["longitude"], site2["latitude"], site2["longitude"]]):
-                continue
+    # Connect only consecutive nodes
+    for i in range(len(site_list) - 1):
+        sid1, lat1, lon1 = site_list[i]
+        sid2, lat2, lon2 = site_list[i + 1]
 
-            dist = haversine(site1["latitude"], site1["longitude"], site2["latitude"], site2["longitude"])
-            if dist <= MAX_DISTANCE:
-                adjacency[sid1].add(sid2)
-                adjacency[sid2].add(sid1)
+        dist = haversine(lat1, lon1, lat2, lon2)
+        if dist <= MAX_DISTANCE:
+            adjacency[sid1].add(sid2)
+            adjacency[sid2].add(sid1)
 
 # === Final save ===
 adjacency = {k: sorted(list(v)) for k, v in adjacency.items()}
