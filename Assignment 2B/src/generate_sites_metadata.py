@@ -9,31 +9,46 @@ xls_path = "../data/raw/Scats Data October 2006.xls"
 df_data = pd.read_excel(xls_path, sheet_name="Data", header=1)
 df_summary = pd.read_excel(xls_path, sheet_name="Summary Of Data", header=3)
 
-# === Clean SCATS Number column ===
+# === Normalize SCATS numbers ===
 df_data["SCATS Number"] = df_data["SCATS Number"].astype(str).str.zfill(4)
 df_summary["SCATS Number"] = df_summary["SCATS Number"].fillna(method='ffill').astype(int).astype(str).str.zfill(4)
 
-# === Group locations by site ===
+# === Group all location rows by SCATS site ===
 site_locations = defaultdict(list)
 for _, row in df_summary.iterrows():
-    scats_id = row["SCATS Number"]
-    location = row["Location"]
-    if isinstance(location, str):
-        site_locations[scats_id].append(location)
+    site_id = row["SCATS Number"]
+    location = str(row["Location"]).strip()
+    if location:
+        site_locations[site_id].append(location)
 
-# === Extract roads ===
+# === Extract clean road names from location strings ===
 def extract_roads(location):
+    """Extract clean road names like HIGH STREET_RD, EASTERN_FWY_W_BD_RAMPS, etc."""
     if not isinstance(location, str):
         return []
-    cleaned = re.sub(r"\b(?:N|S|E|W|NE|NW|SE|SW)\b\s+of\b", "", location)
-    cleaned = re.sub(r"\bof\b", "", cleaned)
 
-    # Extract uppercase road-like tokens
-    matches = re.findall(r"[A-Z]+(?:_[A-Z]+)+", cleaned)
+    # Valid suffixes
+    suffixes = ["RD", "ST", "HWY", "FWY", "GV", "ARTERIAL", "RAMPS", "PARK"]
 
-    # Normalize names like WARRIGAL_RD to WARRIGAL_RD (no spaces, consistent casing)
-    return [m.replace(" ", "_").replace("__", "_").strip() for m in matches]
+    # Extract candidates: multi-word all-caps strings ending in a valid suffix
+    road_pattern = re.compile(
+        r"\b([A-Z0-9]+(?:[ _][A-Z0-9]+)*_(%s))\b" % "|".join(suffixes)
+    )
 
+    # Split on "of" (case-insensitive) to check both sides of the relation
+    parts = re.split(r"\bof\b", location, flags=re.IGNORECASE)
+
+    roads = set()
+    for part in parts:
+        for match in road_pattern.findall(part):
+            full_name = match[0].strip()
+            if full_name not in ["N", "S", "E", "W", "NE", "NW", "SE", "SW", "OF"]:
+                roads.add(full_name)
+
+    return list(roads)
+
+
+# === Construct metadata ===
 site_metadata = {}
 
 for site_id, locations in site_locations.items():
@@ -41,18 +56,26 @@ for site_id, locations in site_locations.items():
     for loc in locations:
         roads.update(extract_roads(loc))
 
+    # Get lat/lon from the first matching row in Data sheet
     lat, lon = None, None
-    site_data_rows = df_data[df_data["SCATS Number"] == site_id]
-    if not site_data_rows.empty:
-        lat = site_data_rows["NB_LATITUDE"].iloc[0]
-        lon = site_data_rows["NB_LONGITUDE"].iloc[0]
+    site_rows = df_data[df_data["SCATS Number"] == site_id]
+    if not site_rows.empty:
+            lat = lon = None
+    for _, row in site_rows.iterrows():
+        lat_candidate = row.get("NB_LATITUDE")
+        lon_candidate = row.get("NB_LONGITUDE")
+        if lat_candidate and lon_candidate and lat_candidate != 0 and lon_candidate != 0:
+            lat = lat_candidate
+            lon = lon_candidate
+            break
 
-    site_metadata[site_id] = {
-        "site_id": site_id,
+
+    site_metadata[int(site_id)] = {
+        "site_id": int(site_id),
         "latitude": float(lat) if lat else None,
         "longitude": float(lon) if lon else None,
         "locations": locations,
-        "connected_roads": sorted(roads) if roads else [],
+        "connected_roads": sorted(roads)
     }
 
 # === Save to JSON ===
