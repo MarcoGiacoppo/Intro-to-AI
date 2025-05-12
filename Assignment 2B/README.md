@@ -16,17 +16,17 @@ This project implements a machine learning-enhanced route guidance system for th
 ├── images/                          # Plots and visualizations for the report
 ├── src/                             # All source code files
 │   ├── train_models.py              # Train and evaluate ML models
-│   ├── predict_travel_time.py      # Predict travel time using trained models
-│   ├── route_finder.py             # Route search engine with heuristics
-│   ├── gui.py                      # Interactive GUI for user input and route visualization
-│   ├── plot_flow_comparison.py     # Line chart: true vs predicted flow
-│   ├── plot_time_series_comparison.py # Clean time series chart by timestamp
+│   ├── display_route_map.py         # Maps route on streamlit app
+│   ├── gui_streamlit.py            # Interactive GUI for user input and route visualization
 │   ├── generate_adjacency.py       # Build graph from SCATS site links
 │   ├── generate_sites_metadata.py  # Create coordinates and metadata
 │   ├── preprocess.py               # Prepares the dataset for training
-│   ├── visualize_route.py          # Matplotlib route plotting tool
-│   ├── predict_and_convert.py      # Predicts and converts traffic volume to speed manually
-│   └── search_algorithms.py        # DFS, BFS, UCS, A* algorithms
+│   └── search_algorithms.py        # DFS, BFS, UCS, A*, GBFS algorithms
+├── visuals/                             # Source Code for visuals
+│   ├── plot_error_heatmap.py       
+│   ├── plot_metrics_bar.py          
+│   ├── plot_predicted_vs_true_split.py
+│   ├── plot_time_series_comparison.py     
 ```
 
 ---
