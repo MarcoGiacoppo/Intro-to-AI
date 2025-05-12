@@ -108,3 +108,25 @@ def astar(start, goal, get_neighbors, cost_fn, heuristic_fn):
             heapq.heappush(heap, (f, g, neighbor, path + [neighbor]))
 
     return None, None, {}
+
+def dijkstra(start, goal, get_neighbors, cost_fn, heuristic_fn):
+    heap = [(0, start, [start])]
+    visited = {}
+    segment_costs = {}
+
+    while heap:
+        cost, current, path = heapq.heappop(heap)
+        if current == goal:
+            return path, cost, segment_costs
+        if current in visited and visited[current] <= cost:
+            continue
+        visited[current] = cost
+
+        for neighbor in get_neighbors(current):
+            edge_cost = cost_fn(current, neighbor)
+            if edge_cost == float("inf"):
+                continue
+            segment_costs[(current, neighbor)] = edge_cost
+            heapq.heappush(heap, (cost + edge_cost, neighbor, path + [neighbor]))
+
+    return None, None, {}

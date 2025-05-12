@@ -1,23 +1,30 @@
 import folium
 from streamlit_folium import st_folium
+from folium.plugins import AntPath
 
 def display_route_map(paths: dict, metadata: dict, colors: dict):
     first_path = next(iter(paths.values()))
     start_info = metadata[str(first_path[0])]
     m = folium.Map(location=[start_info["latitude"], start_info["longitude"]], zoom_start=12)
 
-    # --- Draw all SCATS sites with a slight shift
+    # Gather all node IDs involved in any route
+    highlighted_nodes = set(str(sid) for path in paths.values() for sid in path)
+
+    # Render all nodes, coloring them conditionally
     for sid, info in metadata.items():
         lat = info["latitude"] + 0.0012
         lon = info["longitude"] + 0.0012
+        is_in_path = str(sid) in highlighted_nodes
+
         folium.CircleMarker(
             location=[lat, lon],
-            radius=3,
-            color='red',
+            radius=4,
+            color="blue" if is_in_path else "black",
             fill=True,
-            fill_opacity=0.6,
+            fill_opacity=0.8 if is_in_path else 0.3,
             popup=f"SCATS: {sid}"
         ).add_to(m)
+
 
     # --- Draw each route
     for algo, path in paths.items():
@@ -33,10 +40,18 @@ def display_route_map(paths: dict, metadata: dict, colors: dict):
                 coords.append((lat, lon))
 
         if coords:
-            folium.PolyLine(coords, color=color, weight=5, opacity=0.7, popup=algo).add_to(m)
+            AntPath(
+                locations=coords,
+                color=color,
+                weight=5,
+                delay=800,  # animation speed in ms
+                dash_array=[10, 20],
+                pulse_color="#fff",
+            ).add_to(m)
+
 
         # Start and end markers
         folium.Marker(coords[0], icon=folium.Icon(color="green", icon="play"), popup=f"{algo} Start").add_to(m)
         folium.Marker(coords[-1], icon=folium.Icon(color="red", icon="flag"), popup=f"{algo} End").add_to(m)
 
-    return st_folium(m, width=700, height=500)
+    return st_folium(m, width=900, height=500)
