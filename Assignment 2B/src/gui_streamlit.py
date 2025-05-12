@@ -2,7 +2,7 @@ import streamlit as st
 import json
 import numpy as np
 from datetime import datetime
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model #type:ignore
 import joblib
 from search_algorithms import dfs, bfs, ucs, astar
 from display_route_map import display_route_map
@@ -239,3 +239,7 @@ for name, result in st.session_state.results.items():
 if paths_for_map:
     st.markdown("## 🗺️ Visual Route Map")
     display_route_map(paths_for_map, metadata, colors)
+
+import sys
+st.write("🔍 Python path:", sys.executable)
+st.write("🐍 Python version:", sys.version)
