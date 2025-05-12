@@ -19,7 +19,7 @@ def display_route_map(paths: dict, metadata: dict, colors: dict):
         folium.CircleMarker(
             location=[lat, lon],
             radius=4,
-            color="red" if is_in_path else "#888",  # red for route, gray otherwise
+            color="blue" if is_in_path else "black",
             fill=True,
             fill_opacity=0.8 if is_in_path else 0.3,
             popup=f"SCATS: {sid}"

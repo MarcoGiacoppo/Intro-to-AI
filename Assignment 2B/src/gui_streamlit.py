@@ -4,7 +4,7 @@ import numpy as np
 from datetime import datetime
 from tensorflow.keras.models import load_model #type:ignore
 import joblib
-from search_algorithms import dfs, bfs, ucs, astar
+from search_algorithms import dfs, bfs, ucs, astar, gbfs, dijkstra
 from display_route_map import display_route_map
 from math import radians, sin, cos, sqrt, atan2
 import pandas as pd
@@ -157,7 +157,7 @@ with center:
     with col4:
         with st.container():
             st.markdown('<div style="width:100%">', unsafe_allow_html=True)
-            search_algo = st.selectbox("🔍 Search Algorithm", ["All", "DFS", "BFS", "UCS", "A*"], key="search")
+            search_algo = st.selectbox("🔍 Search Algorithm", ["All", "DFS", "BFS", "UCS", "Dijkstra", "GBFS", "A*"], key="search")
             st.markdown('</div>', unsafe_allow_html=True)
 
     st.session_state.model_choice = model_choice
@@ -168,13 +168,20 @@ with center:
 if run_button:
     travel_time_cache.clear()
     all_searches = search_algo == "All"
-    search_fn_map = {"A*": astar, "BFS": bfs, "UCS": ucs, "DFS": dfs}
+    search_fn_map = {
+        "A*": astar,
+        "Dijkstra": dijkstra,
+        "UCS": ucs,
+        "BFS": bfs,        
+        "GBFS": gbfs,
+        "DFS": dfs
+    }
     search_methods = search_fn_map if all_searches else {search_algo: search_fn_map[search_algo]}
     st.session_state.results.clear()
 
     for name, search in search_methods.items():
         try:
-            h_fn = (lambda n: heuristic_fn(n, destination)) if name == "A*" else None
+            h_fn = (lambda n: heuristic_fn(n, destination)) if name in ["A*", "GBFS"] else None
             path, total_cost, segment_costs = search(origin, destination, get_neighbors, cost_fn, heuristic_fn=h_fn)
 
             if not path:
@@ -216,7 +223,15 @@ if run_button:
         except Exception as e:
             st.session_state.results[name] = {"path": None, "error": str(e)}
 
-colors = {"DFS": "black", "BFS": "purple", "UCS": "blue", "A*": "green"}
+colors = {
+    "A*": "#2ECC71",        # ✅ Green - Best
+    "Dijkstra": "#27AE60",  # 🟢 Darker Green - Optimal but no heuristic
+    "UCS": "#F1C40F",       # 🟡 Yellow - Slower but reliable
+    "GBFS": "#E67E22",      # 🟠 Orange - Fast but not optimal
+    "BFS": "#D35400",       # 🟠 Darker Orange
+    "DFS": "#E74C3C"        # 🔴 Red - Worst
+}
+
 paths_for_map = {}
 
 st.markdown("## 📈 Search Results")
@@ -239,7 +254,3 @@ for name, result in st.session_state.results.items():
 if paths_for_map:
     st.markdown("## 🗺️ Visual Route Map")
     display_route_map(paths_for_map, metadata, colors)
-
-import sys
-st.write("🔍 Python path:", sys.executable)
-st.write("🐍 Python version:", sys.version)
