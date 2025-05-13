@@ -8,41 +8,49 @@ lstm = pd.read_csv("../results/flow_lstm.csv", parse_dates=["timestamp"])
 gru = pd.read_csv("../results/flow_gru.csv", parse_dates=["timestamp"])
 tcn = pd.read_csv("../results/flow_tcn.csv", parse_dates=["timestamp"])
 
-# === Automatically find first day range ===
-first_timestamp = lstm["timestamp"].min()
-start_date = first_timestamp.normalize()
-end_date = start_date + pd.Timedelta(days=1) # Change days value to show combined data for that amount of days
+# === Convert to datetime index for resampling
+lstm.set_index("timestamp", inplace=True)
+gru.set_index("timestamp", inplace=True)
+tcn.set_index("timestamp", inplace=True)
 
-# === Filter data ===
-mask = (lstm["timestamp"] >= start_date) & (lstm["timestamp"] < end_date)
-timestamps = lstm.loc[mask, "timestamp"]
-true_vals = lstm.loc[mask, "true"]
-lstm_vals = lstm.loc[mask, "predicted"]
-gru_vals = gru.loc[mask, "predicted"]
-tcn_vals = tcn.loc[mask, "predicted"]
+# === Average across all SCATS sites per timestamp
+lstm_avg = lstm.groupby("timestamp").mean(numeric_only=True)
+gru_avg  = gru.groupby("timestamp").mean(numeric_only=True)
+tcn_avg  = tcn.groupby("timestamp").mean(numeric_only=True)
 
-# === Plot ===
+# === Define date range to visualize (first full day)
+start_date = lstm_avg.index.min().normalize()
+end_date = start_date + pd.Timedelta(days=1)
+mask = (lstm_avg.index >= start_date) & (lstm_avg.index < end_date)
+
+# === Extract values
+timestamps = lstm_avg.loc[mask].index
+true_vals  = lstm_avg.loc[mask]["true"]
+lstm_vals  = lstm_avg.loc[mask]["predicted"]
+gru_vals   = gru_avg.loc[mask]["predicted"]
+tcn_vals   = tcn_avg.loc[mask]["predicted"]
+
+# === Plot
 plt.figure(figsize=(12, 6))
-plt.plot(timestamps, true_vals, label="True Data", color="black", linewidth=2)
-plt.plot(timestamps, lstm_vals, "--", label="LSTM", color="#007ACC")
-plt.plot(timestamps, gru_vals, "--", label="GRU", color="#FF8C00")
-plt.plot(timestamps, tcn_vals, "--", label="TCN", color="#8A2BE2")
+plt.plot(timestamps, true_vals, label="True Volume (Avg)", color="black", linewidth=2)
+plt.plot(timestamps, lstm_vals, "--", label="LSTM (Avg)", color="#007ACC")
+plt.plot(timestamps, gru_vals, "--", label="GRU (Avg)", color="#FF8C00")
+plt.plot(timestamps, tcn_vals, "--", label="TCN (Avg)", color="#8A2BE2")
 
-# === Format x-axis to show time only ===
 plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
 plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=2))
 plt.xticks(rotation=45)
 
 plt.xlabel("Time of Day")
-plt.ylabel("Traffic Flow")
-plt.title("True vs Predicted Traffic Flow")
+plt.ylabel("Average Traffic Volume")
+plt.title("True vs Predicted Traffic Flow (Avg across sites)")
 plt.grid(True, linestyle="--", alpha=0.6)
 plt.legend()
 plt.tight_layout()
 
-# === Save image ===
+# === Save image
 os.makedirs("../images", exist_ok=True)
-plt.savefig("../images/flow_time_series_comparison.png", dpi=300)
+plt.savefig("../images/flow_time_series_comparison_avg.png", dpi=300)
 plt.show()
 
-print("✅ Chart saved to: /images/flow_time_series_comparison.png")
+print("✅ Chart saved to: /images/flow_time_series_comparison_avg.png")

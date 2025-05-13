@@ -93,16 +93,17 @@ def train_and_evaluate(model_name, build_fn, X_seq_train, X_scats_train, y_train
                        X_seq_test, X_scats_test, y_test, timestamps_test,
                        scaler, scats_encoder):
     import time
+
     model = build_fn(len(scats_encoder.classes_))
     model.compile(optimizer="adam", loss="mse")
     es = EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True)
 
-    # Track training time
+    # === Train
     start = time.time()
     history = model.fit(
         [X_seq_train[..., np.newaxis], X_scats_train],
         y_train,
-        epochs=50,
+        epochs=100,
         batch_size=32,
         validation_split=0.1,
         callbacks=[es],
@@ -113,46 +114,59 @@ def train_and_evaluate(model_name, build_fn, X_seq_train, X_scats_train, y_train
     total_time = end - start
     epochs_run = len(history.history["loss"])
     time_per_epoch = total_time / epochs_run if epochs_run else 0
+    final_loss = history.history["loss"][-1]
+    final_val_loss = history.history["val_loss"][-1]
 
-    # Save model and artifacts
+    # === Save loss per epoch
+    history_df = pd.DataFrame({
+        "epoch": range(1, epochs_run + 1),
+        "loss": history.history["loss"],
+        "val_loss": history.history["val_loss"]
+    })
+    os.makedirs("../results", exist_ok=True)
+    history_df.to_csv(f"../results/loss_curve_{model_name.lower()}.csv", index=False)
+
+    # === Save model + scalers
     os.makedirs(MODEL_DIR, exist_ok=True)
     model.save(f"{MODEL_DIR}/{model_name}_model.keras")
     joblib.dump(scaler, f"{MODEL_DIR}/{model_name}_scaler.pkl")
     joblib.dump(scats_encoder, f"{MODEL_DIR}/{model_name}_scats_encoder.pkl")
 
-    # Predict and inverse scale
+    # === Predict
     y_pred = model.predict([X_seq_test[..., np.newaxis], X_scats_test])
     y_true_inv = scaler.inverse_transform(y_test.reshape(-1, 1))
     y_pred_inv = scaler.inverse_transform(y_pred)
 
-    # Save true vs predicted flows
     flow_df = pd.DataFrame({
         "timestamp": timestamps_test,
         "true": y_true_inv.flatten(),
         "predicted": y_pred_inv.flatten()
-    })
+    }).sort_values("timestamp")
     flow_df.to_csv(f"../results/flow_{model_name.lower()}.csv", index=False)
 
-    # Metrics
+    # === Evaluation
     mae = mean_absolute_error(y_true_inv, y_pred_inv)
     mse = mean_squared_error(y_true_inv, y_pred_inv)
     rmse = np.sqrt(mse)
     mape = mean_absolute_percentage_error(y_true_inv, y_pred_inv)
     r2 = r2_score(y_true_inv, y_pred_inv)
-
-    # Count layers excluding input
     num_layers = len([l for l in model.layers if not l.__class__.__name__.startswith("Input")])
 
-    print(f"📊 {model_name.upper()} Results — MAE: {mae:.2f}, RMSE: {rmse:.2f}, R2: {r2:.2f}")
+    print(f"📊 {model_name.upper()} Results — MAE: {mae:.4f}, RMSE: {rmse:.4f}, R2: {r2:.4f}")
+
     return {
         "model": model_name.upper(),
-        "MAE": round(mae, 3),
-        "MSE": round(mse, 3),
-        "RMSE": round(rmse, 3),
-        "MAPE": round(mape, 3),
-        "R2": round(r2, 3),
+        "MAE": round(mae, 4),
+        "MSE": round(mse, 4),
+        "RMSE": round(rmse, 4),
+        "MAPE": round(mape, 4),
+        "R2": round(r2, 4),
         "TrainingTimePerEpoch": round(time_per_epoch, 2),
-        "NumLayers": num_layers
+        "NumLayers": num_layers,
+        "FinalLoss": round(final_loss, 6),
+        "FinalValLoss": round(final_val_loss, 6),
+        "EpochsRun": epochs_run,
+        "TotalTrainingTime": round(total_time, 2)
     }
 
 if __name__ == "__main__":
