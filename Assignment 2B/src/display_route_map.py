@@ -7,7 +7,7 @@ def display_route_map(paths: dict, metadata: dict, colors: dict):
     start_info = metadata[str(first_path[0])]
     adjusted_lat = start_info["latitude"] + 0.04  # move view 
     adjusted_lon = start_info["longitude"] - 0.02
-    m = folium.Map(location=[adjusted_lat, adjusted_lon], zoom_start=13)
+    m = folium.Map(location=[adjusted_lat, adjusted_lon], zoom_start=13, tiles="CartoDB dark_matter") #remove tiles if want to change back to default
 
 
     # Gather all node IDs involved in any route
@@ -22,7 +22,7 @@ def display_route_map(paths: dict, metadata: dict, colors: dict):
         folium.CircleMarker(
             location=[lat, lon],
             radius=4,
-            color="blue" if is_in_path else "black",
+            color="red" if is_in_path else "blue",
             fill=True,
             fill_opacity=0.8 if is_in_path else 0.3,
             popup=f"SCATS: {sid}"

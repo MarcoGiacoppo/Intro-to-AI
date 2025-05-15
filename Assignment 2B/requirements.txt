@@ -8,10 +8,10 @@ joblib>=1.4.2
 # === Visualization
 matplotlib>=3.9.2
 
-# === GUI
-streamlit>=1.45.0
-folium>=0.19.5
-streamlit-folium>=0.25.0
+# === Streamlit GUI
+streamlit>=1.20
+folium>=0.14
+streamlit-folium>=0.11.1  # latest stable release
 
-# === Optional (clean CLI logs)
-rich>=13.0
+# === Optional Enhancements
+rich>=13.0  # better CLI logs, colored errors
