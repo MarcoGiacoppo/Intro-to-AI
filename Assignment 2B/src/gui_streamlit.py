@@ -235,20 +235,11 @@ if run_button:
 
 # === Results Display ===
 colors = {
-<<<<<<< HEAD
     "A*": "#2ECC71",        # ✅ Green - Best
     "UCS": "#F1C40F",       # 🟡 Yellow - Slower but reliable
     "GBFS": "#E67E22",      # 🟠 Orange - Fast but not optimal
     "BFS": "#D35400",       # 🟠 Darker Orange
     "DFS": "#E74C3C"        # 🔴 Red - Worst
-=======
-    "A*": "#2ECC71",
-    "Dijkstra": "#27AE60",
-    "UCS": "#F1C40F",
-    "GBFS": "#E67E22",
-    "BFS": "#D35400",
-    "DFS": "#E74C3C"
->>>>>>> 1c5727f6369fb5393248b528c67754334feb14a5
 }
 
 paths_for_map = {}
