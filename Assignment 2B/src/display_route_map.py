@@ -5,7 +5,10 @@ from folium.plugins import AntPath
 def display_route_map(paths: dict, metadata: dict, colors: dict):
     first_path = next(iter(paths.values()))
     start_info = metadata[str(first_path[0])]
-    m = folium.Map(location=[start_info["latitude"], start_info["longitude"]], zoom_start=12)
+    adjusted_lat = start_info["latitude"] + 0.04  # move view 
+    adjusted_lon = start_info["longitude"] - 0.02
+    m = folium.Map(location=[adjusted_lat, adjusted_lon], zoom_start=13)
+
 
     # Gather all node IDs involved in any route
     highlighted_nodes = set(str(sid) for path in paths.values() for sid in path)
@@ -54,4 +57,4 @@ def display_route_map(paths: dict, metadata: dict, colors: dict):
         folium.Marker(coords[0], icon=folium.Icon(color="green", icon="play"), popup=f"{algo} Start").add_to(m)
         folium.Marker(coords[-1], icon=folium.Icon(color="red", icon="flag"), popup=f"{algo} End").add_to(m)
 
-    return st_folium(m, width=900, height=500)
+    return st_folium(m, width=1000)
