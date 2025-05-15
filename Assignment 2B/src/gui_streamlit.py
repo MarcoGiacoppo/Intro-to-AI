@@ -225,7 +225,6 @@ if run_button:
 
 colors = {
     "A*": "#2ECC71",        # ✅ Green - Best
-    "Dijkstra": "#27AE60",  # 🟢 Darker Green - Optimal but no heuristic
     "UCS": "#F1C40F",       # 🟡 Yellow - Slower but reliable
     "GBFS": "#E67E22",      # 🟠 Orange - Fast but not optimal
     "BFS": "#D35400",       # 🟠 Darker Orange
