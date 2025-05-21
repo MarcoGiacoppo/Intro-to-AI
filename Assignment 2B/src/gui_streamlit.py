@@ -5,7 +5,7 @@ from routing_core import (
     cost_fn, heuristic_fn, get_neighbors, calculate_total_distance, preload_all_travel_times
 )
 from display_route_map import display_route_map
-from search_algorithms import dfs, bfs, ucs, astar, gbfs, dijkstra
+from search_algorithms import dfs, bfs, ucs, astar, gbfs, bidirectional
 
 # === Page config and CSS ===
 st.set_page_config(page_title="TBRGS - Route Finder", layout="wide")
@@ -61,7 +61,7 @@ if "results" not in st.session_state:
 # === Color schemes ===
 colors = {
     "A*": "#00FF7F",
-    "Dijkstra": "#1E90FF",
+    "Bidirectional": "#1E90FF",
     "UCS": "#FFD700",
     "GBFS": "#FF69B4",
     "BFS": "#7B68EE",
@@ -69,7 +69,7 @@ colors = {
 }
 color_names = {
     "A*": "Neon Green",
-    "Dijkstra": "Dodger Blue",
+    "Bidirectional": "Dodger Blue",
     "UCS": "Gold",
     "GBFS": "Hot Pink",
     "BFS": "Slate Blue",
@@ -89,7 +89,7 @@ col3, col4 = st.columns(2)
 with col3:
     model_choice = st.selectbox("🧠 Prediction Model", ["lstm", "gru", "tcn"], key="model")
 with col4:
-    search_algo = st.selectbox("🔍 Search Algorithm", ["All", "DFS", "BFS", "UCS", "Dijkstra", "GBFS", "A*"], key="search")
+    search_algo = st.selectbox("🔍 Search Algorithm", ["All", "DFS", "BFS", "UCS", "Bidirectional", "GBFS", "A*"], key="search")
 
 # new addition, hour of day
 col5, _ = st.columns([1, 1])
@@ -113,7 +113,7 @@ if run_button:
 
     search_fn_map = {
         "A*": astar,
-        "Dijkstra": dijkstra,
+        "Bidirectional": bidirectional,
         "UCS": ucs,
         "BFS": bfs,
         "GBFS": gbfs,
