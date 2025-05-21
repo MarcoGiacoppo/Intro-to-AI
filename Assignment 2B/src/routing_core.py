@@ -4,8 +4,10 @@ from datetime import datetime
 from math import radians, sin, cos, sqrt, atan2
 from tensorflow.keras.models import load_model  # type: ignore
 import joblib
+import pandas as pd
+import math
 
-# === Load data once ===
+# === Load metadata once ===
 with open("../data/graph/sites_metadata.json") as f:
     metadata = json.load(f)
 with open("../data/graph/adjacency_from_summary.json") as f:
@@ -15,7 +17,17 @@ site_ids = sorted(metadata.keys())
 travel_time_cache = {}
 _model_cache = {}
 
-# === Model prediction ===
+# === Load traffic flow CSV once (global!) ===
+traffic_df = pd.read_csv("../data/processed/Oct_2006_Boorondara_Traffic_Flow_Data.csv")
+traffic_df["SCATS Number"] = traffic_df["SCATS Number"].apply(lambda x: str(x).zfill(4))
+v_cols = [col for col in traffic_df.columns if col.startswith("V") and col[1:].isdigit()]
+traffic_df_long = traffic_df.melt(id_vars=["SCATS Number", "Date"], value_vars=v_cols,
+                                   var_name="Bin", value_name="volume")
+traffic_df_long["hour"] = traffic_df_long["Bin"].apply(lambda x: int(x[1:]) // 4)
+traffic_df_long["minute_offset"] = traffic_df_long["Bin"].apply(lambda x: int(x[1:]) * 15)
+traffic_df_long["timestamp"] = pd.to_datetime(traffic_df_long["Date"]) + pd.to_timedelta(traffic_df_long["minute_offset"], unit="m")
+
+# === Load model and encoders ===
 def load_prediction_components(model_name):
     if model_name in _model_cache:
         return _model_cache[model_name]
@@ -27,28 +39,132 @@ def load_prediction_components(model_name):
     _model_cache[model_name] = (model, scaler, encoder)
     return model, scaler, encoder
 
-def predict_travel_time_model(scats_id, model_name="lstm"):
-    scats_id = str(int(scats_id))
-    hour = datetime.now().hour
+def flow_to_travel_time(volume, distance_km=1.0):
+    try:
+        if volume is None or volume < 0:
+            return 12.0
 
+        a, b, c = -1.4648375, 93.75, -volume
+        d = b**2 - 4 * a * c
+        if d < 0:
+            return 12.0
+
+        speed = (-b - math.sqrt(d)) / (2 * a)
+
+        # Clamp only absurd values, not reasonable speeds
+        if math.isnan(speed) or speed <= 0:
+            return 12.0
+        if speed < 5:
+            speed = 5
+
+        # ⛔️ Do NOT clamp high speeds unless they’re truly unrealistic
+        travel_time = (distance_km / speed) * 60 + 0.5
+        return round(travel_time, 2)
+
+    except Exception as e:
+        print(f"[FLOW2TIME ERROR] volume={volume} → {e}")
+        return 12.0
+
+# === Efficient real input sequence ===
+def get_real_input_sequence(scats_id, scaler, selected_hour=None):
+    """
+    Returns a valid 24-step input sequence for the selected SCATS site and hour.
+    Adds debug output to verify variability.
+    """
+    try:
+        df = traffic_df_long[traffic_df_long["SCATS Number"] == scats_id]
+
+        if df.empty:
+            print(f"[WARN] No data for SCATS {scats_id}")
+            return None
+
+        if selected_hour is None:
+            selected_hour = datetime.now().hour
+
+        # Filter strictly by selected hour
+        df_hour = df[df["hour"] == selected_hour].sort_values("timestamp")
+
+        if df_hour.empty:
+            print(f"[FALLBACK] No entries for SCATS {scats_id} at hour {selected_hour}")
+            return None
+
+        # Get the latest timestamp within this hour
+        latest_ts = df_hour["timestamp"].max()
+
+        # Get the 24 values before that point
+        seq_df = df[df["timestamp"] < latest_ts].sort_values("timestamp").tail(24)
+
+        if len(seq_df) < 24:
+            print(f"[FALLBACK] Not enough data before {latest_ts} for SCATS {scats_id}")
+            return None
+
+        volumes = seq_df["volume"].values
+        scaled = scaler.transform(volumes.reshape(-1, 1))
+
+        # print("=" * 60)
+        # print(f"[DEBUG] SCATS={scats_id} | Hour={selected_hour}")
+        # print(f"         Latest Timestamp: {latest_ts}")
+        # print(f"         Volume Sequence : {volumes.tolist()}")
+        # print(f"         Mean Volume     : {volumes.mean():.2f}")
+        # print(f"         Scaled Input    : {scaled.flatten().round(4).tolist()}")
+        # print("=" * 60)
+
+        return scaled.reshape(1, 24, 1)
+
+    except Exception as e:
+        print(f"[ERROR] get_real_input_sequence failed for SCATS {scats_id} @ hour {selected_hour}: {e}")
+        return None
+
+# === Predict travel time (called only in preload step now) ===
+def predict_travel_time_model(scats_id, model_name="lstm", hour_override=None):
+    scats_id = str(int(scats_id))
     model, scaler, encoder = load_prediction_components(model_name)
 
     if scats_id not in encoder.classes_:
-        return 1.0
+        return 12.0  # fallback if encoder can't map the site
 
     idx = encoder.transform([scats_id])[0]
-    dummy_seq = np.full((1, 24, 1), 0.5)
     input_scats = np.array([[idx]])
+    input_seq = get_real_input_sequence(scats_id, scaler, hour_override)
+    if input_seq is None:
+        return 12.0
 
-    pred_scaled = model.predict([dummy_seq, input_scats], verbose=0)[0][0]
+    pred_scaled = model.predict([input_seq, input_scats], verbose=0)[0][0]
     pred_volume = scaler.inverse_transform([[pred_scaled]])[0][0]
+    pred_volume = max(0.0, min(pred_volume, 400))  # Clamp [0, 400]
 
-    a, b = 0.001, 1.6
-    speed = max(5.0, 100 * (1 - a * (pred_volume ** b)))
-    return round(60 / speed, 2)
+    # Assume average segment distance = 1.0 km
+    return flow_to_travel_time(pred_volume, 1.0)
+
+# === Preload all travel times once per model/hour ===
+def preload_all_travel_times(model_name, selected_hour):
+    model, scaler, encoder = load_prediction_components(model_name)
+    preload_cache = {}
+
+    for scats_id in traffic_df["SCATS Number"].unique():
+        if scats_id not in encoder.classes_:
+            continue
+
+        idx = encoder.transform([scats_id])[0]
+        input_scats = np.array([[idx]])
+        input_seq = get_real_input_sequence(scats_id, scaler, selected_hour)
+        if input_seq is None:
+            continue
+
+        pred_scaled = model.predict([input_seq, input_scats], verbose=0)[0][0]
+        pred_volume = scaler.inverse_transform([[pred_scaled]])[0][0]
+        pred_volume = max(0.0, min(pred_volume, 400))  # Clamp [0, 400]
+
+        travel_time = flow_to_travel_time(pred_volume, 1.0)
+
+        print(f"[PRELOAD] SCATS={scats_id} | hour={selected_hour} | pred_volume={pred_volume:.1f} | time_per_km={travel_time:.2f}")
 
 
-# === Routing utils ===
+        preload_cache[(scats_id, model_name, selected_hour)] = travel_time
+
+    return preload_cache
+
+# === Haversine util ===
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371
     phi1, phi2 = radians(lat1), radians(lat2)
@@ -57,6 +173,7 @@ def haversine(lat1, lon1, lat2, lon2):
     a = sin(dphi / 2)**2 + cos(phi1) * cos(phi2) * sin(dlambda / 2)**2
     return R * 2 * atan2(sqrt(a), sqrt(1 - a))
 
+# === Neighbors & heuristics ===
 def get_neighbors(node):
     return adjacency.get(str(int(node)), [])
 
@@ -69,28 +186,28 @@ def heuristic_fn(n, goal):
         return 0
     return haversine(m1["latitude"], m1["longitude"], m2["latitude"], m2["longitude"])
 
-def cost_fn(a, b, model_name):
+# === Final cost_fn: ultra fast
+def cost_fn(a, b, model_name, selected_hour):
     a, b = str(int(a)), str(int(b))
-
     if a not in metadata or b not in metadata:
         return float("inf")
 
-    if b in travel_time_cache:
-        travel_time = travel_time_cache[b]
-    else:
-        travel_time = predict_travel_time_model(b, model_name)
-        travel_time_cache[b] = travel_time
+    key = (b, model_name, selected_hour)
+    travel_time = travel_time_cache.get(key)
+    if travel_time is None:
+        return float("inf")
 
     m1, m2 = metadata[a], metadata[b]
     if not all([m1.get("latitude"), m1.get("longitude"), m2.get("latitude"), m2.get("longitude")]):
         return float("inf")
 
-    if travel_time > 240:
-        return float("inf")
-
     dist = haversine(m1["latitude"], m1["longitude"], m2["latitude"], m2["longitude"])
-    return dist * travel_time
 
+    print(f"[COST] {a}->{b} | hour={selected_hour} | model={model_name} | dist={dist:.2f} | time/km={travel_time:.2f} | total={travel_time * dist:.2f}")
+
+    return round(travel_time * dist, 2)  # Final units: minutes
+
+# === Total distance calculator ===
 def calculate_total_distance(path):
     total_km = 0.0
     for i in range(1, len(path)):

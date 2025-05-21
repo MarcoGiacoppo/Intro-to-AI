@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from routing_core import (
     metadata, site_ids, travel_time_cache,
-    cost_fn, heuristic_fn, get_neighbors, calculate_total_distance
+    cost_fn, heuristic_fn, get_neighbors, calculate_total_distance, preload_all_travel_times
 )
 from display_route_map import display_route_map
 from search_algorithms import dfs, bfs, ucs, astar, gbfs, dijkstra
@@ -91,11 +91,18 @@ with col3:
 with col4:
     search_algo = st.selectbox("🔍 Search Algorithm", ["All", "DFS", "BFS", "UCS", "Dijkstra", "GBFS", "A*"], key="search")
 
+# new addition, hour of day
+col5, _ = st.columns([1, 1])
+with col5:
+    selected_hour = st.slider("🕒 Hour of Day (0–23)", min_value=0, max_value=23, value=8, step=1, key="hour")
+
+# 👇 DEBUG: Show selected parameters
+print(f"[DEBUG][GUI] Selected model: {model_choice} | Hour: {selected_hour}")
+
 btn_col1, btn_col2, btn_col3 = st.columns([3, 1, 1])
 with btn_col3:
     run_button = st.button("🚗 Find Route")
 
-st.session_state.model_choice = model_choice
 paths_for_map = {}
 
 # === Search execution ===
@@ -114,11 +121,23 @@ if run_button:
 
     search_methods = search_fn_map if all_searches else {search_algo: search_fn_map[search_algo]}
     st.session_state.results.clear()
+        # 👇 DEBUG: Confirm preload trigger
+    print(f"[DEBUG][GUI] Preloading all travel times for model: {model_choice}, hour: {selected_hour}")
+    travel_time_cache.clear()
+    travel_time_cache.update(
+        preload_all_travel_times(model_choice, selected_hour)
+    )
+
 
     for name, search in search_methods.items():
         try:
             h_fn = (lambda n: heuristic_fn(n, destination)) if name in ["A*", "GBFS"] else None
-            path, total_cost, segment_costs = search(origin, destination, get_neighbors, lambda a, b: cost_fn(a, b, st.session_state.model_choice), heuristic_fn=h_fn)
+            path, total_cost, segment_costs = search(
+                origin, 
+                destination, 
+                get_neighbors, 
+                lambda a, b: cost_fn(a, b, model_choice, selected_hour), 
+                heuristic_fn=h_fn)
 
             if not path:
                 st.session_state.results[name] = {"path": None, "error": "No path found."}
@@ -128,7 +147,9 @@ if run_button:
             for i in range(1, len(path)):
                 from_id, to_id = str(int(path[i - 1])), str(int(path[i]))
                 key_str = (from_id, to_id)
-                delta = segment_costs.get(key_str) or cost_fn(from_id, to_id, st.session_state.model_choice)
+                delta = segment_costs.get(key_str)
+                if delta is None:
+                    delta = "?"
 
                 if delta == float("inf"):
                     continue
@@ -138,6 +159,9 @@ if run_button:
                 roads_to = set(metadata[to_id]["connected_roads"])
                 common = roads_from & roads_to
                 road = sorted(common)[0] if common else "?"
+
+                # 👇 DEBUG: Output segment times
+                print(f"[DEBUG][PATH] {from_id} → {to_id} | Time: {delta:.2f} min | Hour: {selected_hour}")
 
                 rows.append({
                     "From": from_id,
