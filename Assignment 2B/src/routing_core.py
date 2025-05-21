@@ -218,15 +218,3 @@ def calculate_total_distance(path):
         lat2, lon2 = metadata[b]["latitude"], metadata[b]["longitude"]
         total_km += haversine(lat1, lon1, lat2, lon2)
     return round(total_km, 2)
-
-if __name__ == "__main__":
-    # This test will compare travel times for SCATS 0970 at two different hours
-    print("\n=== Manual Test: Travel Time Comparison by Hour ===")
-    cache_8am = preload_all_travel_times("lstm", 8)
-    cache_5pm = preload_all_travel_times("lstm", 17)
-
-    key_8am = ("0970", "lstm", 8)
-    key_5pm = ("0970", "lstm", 17)
-
-    print(f"SCATS=0970 @ 08:00 → time_per_km = {cache_8am.get(key_8am)}")
-    print(f"SCATS=0970 @ 17:00 → time_per_km = {cache_5pm.get(key_5pm)}")
