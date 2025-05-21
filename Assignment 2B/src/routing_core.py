@@ -40,40 +40,36 @@ def load_prediction_components(model_name):
     return model, scaler, encoder
 
 def flow_to_travel_time(volume, distance_km=1.0):
-    """
-    Convert traffic volume (vehicles/hr) to travel time in minutes.
-    Inverts official flow-speed parabola. Adds 30s intersection delay.
-    """
     try:
         if volume is None or volume < 0:
             return 12.0
 
         a, b, c = -1.4648375, 93.75, -volume
         d = b**2 - 4 * a * c
-
         if d < 0:
             return 12.0
 
-        # Correct root (a is negative, so this gives lower speed)
         speed = (-b - math.sqrt(d)) / (2 * a)
 
-        if speed <= 0 or math.isnan(speed):
+        # Clamp only absurd values, not reasonable speeds
+        if math.isnan(speed) or speed <= 0:
             return 12.0
+        if speed < 5:
+            speed = 5
 
-        # ⛔️ Do NOT clamp to 60 — let model output real-world high speeds
-        speed = max(5.0, speed)
-
-        return round((distance_km / speed) * 60 + 0.5, 2)
+        # ⛔️ Do NOT clamp high speeds unless they’re truly unrealistic
+        travel_time = (distance_km / speed) * 60 + 0.5
+        return round(travel_time, 2)
 
     except Exception as e:
         print(f"[FLOW2TIME ERROR] volume={volume} → {e}")
         return 12.0
-    
+
 # === Efficient real input sequence ===
 def get_real_input_sequence(scats_id, scaler, selected_hour=None):
     """
-    Returns the latest valid 24-step input sequence for the selected SCATS site and hour.
-    If data is insufficient, returns None.
+    Returns a valid 24-step input sequence for the selected SCATS site and hour.
+    Adds debug output to verify variability.
     """
     try:
         df = traffic_df_long[traffic_df_long["SCATS Number"] == scats_id]
@@ -85,25 +81,33 @@ def get_real_input_sequence(scats_id, scaler, selected_hour=None):
         if selected_hour is None:
             selected_hour = datetime.now().hour
 
-        # Get all rows for the selected hour
+        # Filter strictly by selected hour
         df_hour = df[df["hour"] == selected_hour].sort_values("timestamp")
+
         if df_hour.empty:
             print(f"[FALLBACK] No entries for SCATS {scats_id} at hour {selected_hour}")
             return None
 
-        # Pick the latest timestamp in this hour
+        # Get the latest timestamp within this hour
         latest_ts = df_hour["timestamp"].max()
 
-        # Now get the 24 values that came before this timestamp
+        # Get the 24 values before that point
         seq_df = df[df["timestamp"] < latest_ts].sort_values("timestamp").tail(24)
 
         if len(seq_df) < 24:
             print(f"[FALLBACK] Not enough data before {latest_ts} for SCATS {scats_id}")
             return None
 
-        scaled = scaler.transform(seq_df["volume"].values.reshape(-1, 1))
+        volumes = seq_df["volume"].values
+        scaled = scaler.transform(volumes.reshape(-1, 1))
 
-        print(f"[SEQ OK] SCATS={scats_id}, hour={selected_hour}, mean_volume={seq_df['volume'].mean():.2f}, ts={latest_ts}")
+        # print("=" * 60)
+        # print(f"[DEBUG] SCATS={scats_id} | Hour={selected_hour}")
+        # print(f"         Latest Timestamp: {latest_ts}")
+        # print(f"         Volume Sequence : {volumes.tolist()}")
+        # print(f"         Mean Volume     : {volumes.mean():.2f}")
+        # print(f"         Scaled Input    : {scaled.flatten().round(4).tolist()}")
+        # print("=" * 60)
 
         return scaled.reshape(1, 24, 1)
 
@@ -214,3 +218,15 @@ def calculate_total_distance(path):
         lat2, lon2 = metadata[b]["latitude"], metadata[b]["longitude"]
         total_km += haversine(lat1, lon1, lat2, lon2)
     return round(total_km, 2)
+
+if __name__ == "__main__":
+    # This test will compare travel times for SCATS 0970 at two different hours
+    print("\n=== Manual Test: Travel Time Comparison by Hour ===")
+    cache_8am = preload_all_travel_times("lstm", 8)
+    cache_5pm = preload_all_travel_times("lstm", 17)
+
+    key_8am = ("0970", "lstm", 8)
+    key_5pm = ("0970", "lstm", 17)
+
+    print(f"SCATS=0970 @ 08:00 → time_per_km = {cache_8am.get(key_8am)}")
+    print(f"SCATS=0970 @ 17:00 → time_per_km = {cache_5pm.get(key_5pm)}")
