@@ -108,6 +108,7 @@ paths_for_map = {}
 # === Search execution ===
 if run_button:
     travel_time_cache.clear()
+
     all_searches = search_algo == "All"
 
     search_fn_map = {
@@ -121,9 +122,9 @@ if run_button:
 
     search_methods = search_fn_map if all_searches else {search_algo: search_fn_map[search_algo]}
     st.session_state.results.clear()
-        # 👇 DEBUG: Confirm preload trigger
-    print(f"[DEBUG][GUI] Preloading all travel times for model: {model_choice}, hour: {selected_hour}")
+
     travel_time_cache.clear()
+
     travel_time_cache.update(
         preload_all_travel_times(model_choice, selected_hour)
     )
@@ -155,13 +156,12 @@ if run_button:
                     continue
 
                 cumulative += delta
+
                 roads_from = set(metadata[from_id]["connected_roads"])
                 roads_to = set(metadata[to_id]["connected_roads"])
                 common = roads_from & roads_to
-                road = sorted(common)[0] if common else "?"
 
-                # 👇 DEBUG: Output segment times
-                print(f"[DEBUG][PATH] {from_id} → {to_id} | Time: {delta:.2f} min | Hour: {selected_hour}")
+                road = sorted(common)[0] if common else "?"
 
                 rows.append({
                     "From": from_id,
@@ -227,11 +227,11 @@ if st.session_state.results:
                 st.dataframe(df, use_container_width=True)
                 paths_for_map[name] = result["path"]
 
-# === Map display ===
-if paths_for_map:
-    st.markdown("---")
-    st.markdown("## 🗺️ Visual Route Map")
-    st.info("Zoom and pan to explore the route paths.")
-    display_route_map(paths_for_map, metadata, colors)
+    # === Map display ===
+    if paths_for_map:
+        st.markdown("---")
+        st.markdown("## 🗺️ Visual Route Map")
+        st.info("Zoom and pan to explore the route paths.")
+        display_route_map(paths_for_map, metadata, colors)
 
-st.markdown("---")
+    st.markdown("---")
