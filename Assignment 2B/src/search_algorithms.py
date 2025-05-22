@@ -109,24 +109,74 @@ def astar(start, goal, get_neighbors, cost_fn, heuristic_fn):
 
     return None, None, {}
 
-def dijkstra(start, goal, get_neighbors, cost_fn, heuristic_fn):
-    heap = [(0, start, [start])]
-    visited = {}
+def bidirectional(start, goal, get_neighbors, cost_fn=None, heuristic_fn=None):
+    from collections import deque
+
+    start, goal = str(start), str(goal)
+    if start == goal:
+        return [start], 0.0, {}
+
+    frontier_start = deque([start])
+    frontier_goal = deque([goal])
+
+    visited_start = {start: None}
+    visited_goal = {goal: None}
+
+    meet_node = None
     segment_costs = {}
 
-    while heap:
-        cost, current, path = heapq.heappop(heap)
-        if current == goal:
-            return path, cost, segment_costs
-        if current in visited and visited[current] <= cost:
-            continue
-        visited[current] = cost
+    while frontier_start and frontier_goal:
+        # Expand forward
+        current_start = frontier_start.popleft()
+        for neighbor in get_neighbors(current_start):
+            if neighbor not in visited_start:
+                visited_start[neighbor] = current_start
+                frontier_start.append(neighbor)
+                if neighbor in visited_goal:
+                    meet_node = neighbor
+                    break
+        if meet_node:
+            break
 
-        for neighbor in get_neighbors(current):
-            edge_cost = cost_fn(current, neighbor)
-            if edge_cost == float("inf"):
-                continue
-            segment_costs[(current, neighbor)] = edge_cost
-            heapq.heappush(heap, (cost + edge_cost, neighbor, path + [neighbor]))
+        # Expand backward
+        current_goal = frontier_goal.popleft()
+        for neighbor in get_neighbors(current_goal):
+            if neighbor not in visited_goal:
+                visited_goal[neighbor] = current_goal
+                frontier_goal.append(neighbor)
+                if neighbor in visited_start:
+                    meet_node = neighbor
+                    break
+        if meet_node:
+            break
 
-    return None, None, {}
+    if not meet_node:
+        return None, float("inf"), {}
+
+    # === Reconstruct the path in-place ===
+    path = []
+
+    # Backtrack from meet_node to start
+    node = meet_node
+    while node:
+        path.insert(0, node)
+        node = visited_start[node]
+
+    # Forward from meet_node to goal
+    node = visited_goal[meet_node]
+    while node:
+        path.append(node)
+        node = visited_goal[node]
+
+    # === Optional: Track segment costs ===
+    total_cost = 0.0
+    for i in range(1, len(path)):
+        a, b = path[i - 1], path[i]
+        if cost_fn:
+            c = cost_fn(a, b)
+        else:
+            c = 1
+        total_cost += c
+        segment_costs[(a, b)] = c
+
+    return path, round(total_cost, 2), segment_costs

@@ -46,20 +46,19 @@ def flow_to_travel_time(volume, distance_km=1.0):
 
         a, b, c = -1.4648375, 93.75, -volume
         d = b**2 - 4 * a * c
+
         if d < 0:
             return 12.0
 
         speed = (-b - math.sqrt(d)) / (2 * a)
 
         # Clamp only absurd values, not reasonable speeds
-        if math.isnan(speed) or speed <= 0:
-            return 12.0
-        if speed < 5:
-            speed = 5
+        if speed > 60:
+            #Instead of clamping to 60:
+            speed *= 0.9
+        speed = max(5.0, speed)
 
-        # ⛔️ Do NOT clamp high speeds unless they’re truly unrealistic
-        travel_time = (distance_km / speed) * 60 + 0.5
-        return round(travel_time, 2)
+        return round((distance_km / speed) * 60 + 0.5, 2)
 
     except Exception as e:
         print(f"[FLOW2TIME ERROR] volume={volume} → {e}")
@@ -100,14 +99,6 @@ def get_real_input_sequence(scats_id, scaler, selected_hour=None):
 
         volumes = seq_df["volume"].values
         scaled = scaler.transform(volumes.reshape(-1, 1))
-
-        # print("=" * 60)
-        # print(f"[DEBUG] SCATS={scats_id} | Hour={selected_hour}")
-        # print(f"         Latest Timestamp: {latest_ts}")
-        # print(f"         Volume Sequence : {volumes.tolist()}")
-        # print(f"         Mean Volume     : {volumes.mean():.2f}")
-        # print(f"         Scaled Input    : {scaled.flatten().round(4).tolist()}")
-        # print("=" * 60)
 
         return scaled.reshape(1, 24, 1)
 
@@ -157,9 +148,6 @@ def preload_all_travel_times(model_name, selected_hour):
 
         travel_time = flow_to_travel_time(pred_volume, 1.0)
 
-        print(f"[PRELOAD] SCATS={scats_id} | hour={selected_hour} | pred_volume={pred_volume:.1f} | time_per_km={travel_time:.2f}")
-
-
         preload_cache[(scats_id, model_name, selected_hour)] = travel_time
 
     return preload_cache
@@ -202,8 +190,6 @@ def cost_fn(a, b, model_name, selected_hour):
         return float("inf")
 
     dist = haversine(m1["latitude"], m1["longitude"], m2["latitude"], m2["longitude"])
-
-    print(f"[COST] {a}->{b} | hour={selected_hour} | model={model_name} | dist={dist:.2f} | time/km={travel_time:.2f} | total={travel_time * dist:.2f}")
 
     return round(travel_time * dist, 2)  # Final units: minutes
 

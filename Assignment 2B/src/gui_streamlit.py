@@ -5,7 +5,7 @@ from routing_core import (
     cost_fn, heuristic_fn, get_neighbors, calculate_total_distance, preload_all_travel_times
 )
 from display_route_map import display_route_map
-from search_algorithms import dfs, bfs, ucs, astar, gbfs, dijkstra
+from search_algorithms import dfs, bfs, ucs, astar, gbfs, bidirectional
 
 # === Page config and CSS ===
 st.set_page_config(page_title="TBRGS - Route Finder", layout="wide")
@@ -61,7 +61,7 @@ if "results" not in st.session_state:
 # === Color schemes ===
 colors = {
     "A*": "#00FF7F",
-    "Dijkstra": "#1E90FF",
+    "Bidirectional": "#1E90FF",
     "UCS": "#FFD700",
     "GBFS": "#FF69B4",
     "BFS": "#7B68EE",
@@ -69,7 +69,7 @@ colors = {
 }
 color_names = {
     "A*": "Neon Green",
-    "Dijkstra": "Dodger Blue",
+    "Bidirectional": "Dodger Blue",
     "UCS": "Gold",
     "GBFS": "Hot Pink",
     "BFS": "Slate Blue",
@@ -89,7 +89,7 @@ col3, col4 = st.columns(2)
 with col3:
     model_choice = st.selectbox("🧠 Prediction Model", ["lstm", "gru", "tcn"], key="model")
 with col4:
-    search_algo = st.selectbox("🔍 Search Algorithm", ["All", "DFS", "BFS", "UCS", "Dijkstra", "GBFS", "A*"], key="search")
+    search_algo = st.selectbox("🔍 Search Algorithm", ["All", "DFS", "BFS", "UCS", "Bidirectional", "GBFS", "A*"], key="search")
 
 # new addition, hour of day
 col5, _ = st.columns([1, 1])
@@ -108,11 +108,12 @@ paths_for_map = {}
 # === Search execution ===
 if run_button:
     travel_time_cache.clear()
+
     all_searches = search_algo == "All"
 
     search_fn_map = {
         "A*": astar,
-        "Dijkstra": dijkstra,
+        "Bidirectional": bidirectional,
         "UCS": ucs,
         "BFS": bfs,
         "GBFS": gbfs,
@@ -121,9 +122,9 @@ if run_button:
 
     search_methods = search_fn_map if all_searches else {search_algo: search_fn_map[search_algo]}
     st.session_state.results.clear()
-        # 👇 DEBUG: Confirm preload trigger
-    print(f"[DEBUG][GUI] Preloading all travel times for model: {model_choice}, hour: {selected_hour}")
+
     travel_time_cache.clear()
+
     travel_time_cache.update(
         preload_all_travel_times(model_choice, selected_hour)
     )
@@ -155,13 +156,12 @@ if run_button:
                     continue
 
                 cumulative += delta
+
                 roads_from = set(metadata[from_id]["connected_roads"])
                 roads_to = set(metadata[to_id]["connected_roads"])
                 common = roads_from & roads_to
-                road = sorted(common)[0] if common else "?"
 
-                # 👇 DEBUG: Output segment times
-                print(f"[DEBUG][PATH] {from_id} → {to_id} | Time: {delta:.2f} min | Hour: {selected_hour}")
+                road = sorted(common)[0] if common else "?"
 
                 rows.append({
                     "From": from_id,
@@ -227,11 +227,11 @@ if st.session_state.results:
                 st.dataframe(df, use_container_width=True)
                 paths_for_map[name] = result["path"]
 
-# === Map display ===
-if paths_for_map:
-    st.markdown("---")
-    st.markdown("## 🗺️ Visual Route Map")
-    st.info("Zoom and pan to explore the route paths.")
-    display_route_map(paths_for_map, metadata, colors)
+    # === Map display ===
+    if paths_for_map:
+        st.markdown("---")
+        st.markdown("## 🗺️ Visual Route Map")
+        st.info("Zoom and pan to explore the route paths.")
+        display_route_map(paths_for_map, metadata, colors)
 
-st.markdown("---")
+    st.markdown("---")
