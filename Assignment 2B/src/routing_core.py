@@ -46,20 +46,19 @@ def flow_to_travel_time(volume, distance_km=1.0):
 
         a, b, c = -1.4648375, 93.75, -volume
         d = b**2 - 4 * a * c
+
         if d < 0:
             return 12.0
 
         speed = (-b - math.sqrt(d)) / (2 * a)
 
         # Clamp only absurd values, not reasonable speeds
-        if math.isnan(speed) or speed <= 0:
-            return 12.0
-        if speed < 5:
-            speed = 5
+        if speed > 60:
+            #Instead of clamping to 60:
+            speed *= 0.9
+        speed = max(5.0, speed)
 
-        # ⛔️ Do NOT clamp high speeds unless they’re truly unrealistic
-        travel_time = (distance_km / speed) * 60 + 0.5
-        return round(travel_time, 2)
+        return round((distance_km / speed) * 60 + 0.5, 2)
 
     except Exception as e:
         print(f"[FLOW2TIME ERROR] volume={volume} → {e}")
