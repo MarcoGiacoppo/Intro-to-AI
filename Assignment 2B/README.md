@@ -24,140 +24,155 @@ This project implements a machine learning-enhanced route guidance system for th
 │   └── search_algorithms.py         # DFS, BFS, UCS, A*, GBFS algorithms
 ├── visuals/                         # Visualization scripts
 │   ├── plot_error_heatmap.py
+│   ├── plot_error_histogram.py
+│   ├── plot_error_over_time.py
+│   └── plot_loss_curve.py
 │   ├── plot_metrics_bar.py
 │   ├── plot_predicted_vs_true_split.py
+│   └── plot_prediction_distribution.py
 │   ├── plot_time_series_comparison.py
-│   └── plot_loss_curves.py
 ```
 
 ---
 
 ## 🛠️ Setup Instructions
 
-1. **Install dependencies**
+### 1. Install dependencies
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-2. **Generate metadata and adjacency**
+### 2. Navigate to the `src/` directory
 
-   ```bash
-   python3 src/generate_sites_metadata.py
-   python3 src/generate_adjacency.py
-   ```
+```bash
+cd src/
+```
 
-3. **Preprocess traffic data**
+### 3. Generate metadata and adjacency files
 
-   ```bash
-   python3 src/preprocess.py
-   ```
+```bash
+python3 generate_sites_metadata.py
+python3 generate_adjacency.py
+```
 
-4. **Train all ML models (LSTM, GRU, TCN)**
+### 4. Preprocess traffic data
 
-   ```bash
-   python3 src/train_models.py --model all
-   ```
+```bash
+python3 preprocess.py
+```
 
-   Outputs:
+### 5. Train all ML models (LSTM, GRU, TCN)
 
-   - Trained model files → `/models`
-   - Predicted flows → `/results/flow_*.csv`
-   - Per-epoch loss → `/results/loss_curve_*.csv`
-   - Evaluation metrics → `/results/model_evaluation.csv`
+```bash
+python3 train_models.py --model all
+```
+
+#### ✅ Outputs
+
+- Trained model files → `../models/`
+- Predicted flows → `../results/flow_*.csv`
+- Per-epoch loss → `../results/loss_curve_*.csv`
+- Evaluation metrics → `../results/model_evaluation.csv`
 
 ---
 
 ## 🧠 Evaluation and Visualization
 
+> 📌 For all visualization scripts, navigate to the `visuals/` directory first:
+
+```bash
+cd ../visuals/
+```
+
 ### 📉 Metrics Table
 
-No extra steps — automatically saved to:
+Automatically saved to:
 
-```
-/results/model_evaluation.csv
+```bash
+../results/model_evaluation.csv
 ```
 
 ### 📊 Visualizations
 
-Run each script to generate the following:
+Run each script below to generate and save images:
 
-- **Time Series Comparison**
-
-  ```bash
-  python3 visuals/plot_time_series_comparison.py
-  ```
-
-  → `/images/flow_time_series_comparison_avg.png`
-
-- **Error Heatmap**
-
-  ```bash
-  python3 visuals/plot_error_heatmap.py
-  ```
-
-  → `/images/error_heatmap_lstm.png`
-  → `/images/error_heatmap_gru.png`
-  → `/images/error_heatmap_tcn.png`
-
-- **Per-Site Predictions**
-
-  ```bash
-  python3 visuals/plot_predicted_vs_true_split.py
-  ```
-
-  → `/images/predicted_vs_true_split.png`, etc.
-
-- **Model Metric Comparison**
-
-  ```bash
-  python3 visuals/plot_metrics_bar.py
-  ```
-
-  → `/images/metrics_comparison.png`
-
-- **Loss Curve**
-
-  ```bash
-  python3 visuals/plot_loss_curves.py
-  ```
-
-  → `/images/loss_curves_all_models.png`
-
----
-
-## 💾 GUI Mode
+#### 🕒 Time Series Comparison
 
 ```bash
-python3 src/gui_streamlit.py
+python3 plot_time_series_comparison.py
 ```
 
-Features:
+→ `../images/flow_time_series_comparison_avg.png`
 
-- Select origin and destination SCATS site
+#### 🔥 Error Heatmaps
+
+```bash
+python3 plot_error_heatmap.py
+```
+
+→ `../images/error_heatmap_lstm.png`, `error_heatmap_gru.png`, `error_heatmap_tcn.png`
+
+#### 🧍 Per-Site Predictions
+
+```bash
+python3 plot_predicted_vs_true_split.py
+```
+
+→ `../images/predicted_vs_true_split.png`
+
+#### 📊 Model Metric Comparison
+
+```bash
+python3 plot_metrics_bar.py
+```
+
+→ `../images/metrics_comparison.png`
+
+#### 📉 Loss Curves
+
+```bash
+python3 plot_loss_curves.py
+```
+
+→ `../images/loss_curves_all_models.png`
+
+---
+
+## 💾 Launch the GUI
+
+> From the `src/` directory:
+
+```bash
+streamlit run gui_streamlit.py
+```
+
+### Features:
+
+- Select origin & destination SCATS site
 - Choose ML model and search algorithm
-- Displays best route and travel time
-- Interactive route map with color-coded paths
+- View estimated travel time and route steps
+- Visualize the route on an interactive map
 
 ---
 
-## 🧮 How Travel Time Is Predicted
+## 🧮 Travel Time Prediction Process
 
-1. ML model predicts volume at a SCATS site
-2. Volume → speed using a parabolic formula
-3. Travel time = `distance / speed`
+1. ML model predicts traffic **volume** at a SCATS site
+2. Volume is converted to **speed** using a parabolic formula
+3. Travel time = `distance / speed` (converted to minutes)
 
 ---
 
-## ✅ Evaluation Metrics
+## ✅ Evaluation Metrics Explained
 
-Saved in `/results/model_evaluation.csv`:
+All metrics are saved in `../results/model_evaluation.csv`:
 
 - **MAE** – Mean Absolute Error
 - **RMSE** – Root Mean Squared Error
 - **R²** – Coefficient of Determination
 - **MAPE** – Mean Absolute Percentage Error
 - **Final Loss / Val Loss**
-- **Training Time / Epoch**
+- **Training Time per Epoch**
 
-You can compare models visually via the bar chart or loss curves.
+Use `plot_metrics_bar.py` and `plot_loss_curves.py` for visual comparison.
