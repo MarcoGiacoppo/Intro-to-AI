@@ -18,11 +18,18 @@ class RegisteredTCN(TCN):
 def squeeze_dim1(x):
     return K.squeeze(x, axis=1)
 
-# === Load metadata once ===
-with open("../data/graph/sites_metadata.json") as f:
-    metadata = json.load(f)
-with open("../data/graph/adjacency_from_summary.json") as f:
-    adjacency = json.load(f)
+def load_metadata_and_adjacency():
+    with open("../data/graph/sites_metadata.json") as f:
+        metadata = json.load(f)
+    with open("../data/graph/adjacency_from_summary.json") as f:
+        adjacency = json.load(f)
+    return metadata, adjacency
+
+# Load when script is run (or explicitly from outside)
+try:
+    metadata, adjacency = load_metadata_and_adjacency()
+except FileNotFoundError:
+    metadata, adjacency = {}, {}
 
 site_ids = sorted(metadata.keys())
 travel_time_cache = {}

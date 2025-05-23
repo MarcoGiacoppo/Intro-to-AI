@@ -37,6 +37,16 @@ This project implements a machine learning-enhanced route guidance system for th
 
 ## 🚀 Setup Instructions
 
+---
+
+### 🖱️ One-Click Setup & Launch (Windows Only)
+
+If you're on Windows, you can skip all manual setup steps by using the provided batch script:
+
+```bash
+setup_and_run.bat
+```
+
 ### 🔧 1. Python Version
 This project requires **Python 3.11** for compatibility with TensorFlow 2.19.  
 TensorFlow does **not yet support Python 3.12 or newer**.
