@@ -35,34 +35,69 @@ This project implements a machine learning-enhanced route guidance system for th
 
 ---
 
-## 🛠️ Setup Instructions
+## 🚀 Setup Instructions
 
-### 1. Install dependencies
+### 🔧 1. Python Version
+This project requires **Python 3.11** for compatibility with TensorFlow 2.19.  
+TensorFlow does **not yet support Python 3.12 or newer**.
+
+📥 [Download Python 3.11.5](https://www.python.org/downloads/release/python-3115/) if needed.
+
+---
+
+### 📦 2. Virtual Environment Setup
+
+#### ✅ On **Windows**:
+
+From the project root (`Assignment 2B` folder), run:
 
 ```bash
+"C:\Program Files\Python311\python.exe" -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 2. Navigate to the `src/` directory
+💡 If you get a PowerShell script error, run:
+```bash
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+#### ✅ On **Mac/Linux**:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+---
+
+### 🛠️ 3. Build Pipeline
+
+Navigate to the `src/` folder:
 
 ```bash
 cd src/
 ```
 
-### 3. Generate metadata and adjacency files
+Run the following scripts **in order**:
 
 ```bash
 python3 generate_sites_metadata.py
 python3 generate_adjacency.py
-```
-
-### 4. Preprocess traffic data
-
-```bash
 python3 preprocess.py
 ```
 
-### 5. Train all ML models (LSTM, GRU, TCN)
+This will generate:
+- `data/graph/sites_metadata.json`
+- `data/graph/adjacency_from_summary.json`
+- `data/processed/Oct_2006_Boorondara_Traffic_Flow_Data.csv`
+
+---
+
+### 4. Train all ML models (LSTM, GRU, TCN)
 
 ```bash
 python3 train_models.py --model all
@@ -95,47 +130,17 @@ Automatically saved to:
 
 ### 📊 Visualizations
 
-Run each script below to generate and save images:
-
-#### 🕒 Time Series Comparison
+Run the following scripts to generate plots:
 
 ```bash
-python3 plot_time_series_comparison.py
+python plot_time_series_comparison.py
+python plot_error_heatmap.py
+python plot_predicted_vs_true_split.py
+python plot_metrics_bar.py
+python plot_loss_curve.py
 ```
 
-→ `../images/flow_time_series_comparison_avg.png`
-
-#### 🔥 Error Heatmaps
-
-```bash
-python3 plot_error_heatmap.py
-```
-
-→ `../images/error_heatmap_lstm.png`, `error_heatmap_gru.png`, `error_heatmap_tcn.png`
-
-#### 🧍 Per-Site Predictions
-
-```bash
-python3 plot_predicted_vs_true_split.py
-```
-
-→ `../images/predicted_vs_true_split.png`
-
-#### 📊 Model Metric Comparison
-
-```bash
-python3 plot_metrics_bar.py
-```
-
-→ `../images/metrics_comparison.png`
-
-#### 📉 Loss Curves
-
-```bash
-python3 plot_loss_curves.py
-```
-
-→ `../images/loss_curves_all_models.png`
+Outputs go to the `../images/` directory.
 
 ---
 
@@ -161,6 +166,14 @@ streamlit run gui_streamlit.py
 1. ML model predicts traffic **volume** at a SCATS site
 2. Volume is converted to **speed** using a parabolic formula
 3. Travel time = `distance / speed` (converted to minutes)
+
+---
+
+## 📌 Notes for Cross-Platform Use
+
+- Use `python3` on Mac/Linux, and `python` or `py -3.11` on Windows depending on your install.
+- Make sure your terminal is in the root project folder when running commands.
+- If using OneDrive or synced folders, avoid filename issues by sticking to ASCII filenames.
 
 ---
 
