@@ -6,6 +6,17 @@ from tensorflow.keras.models import load_model  # type: ignore
 import joblib
 import pandas as pd
 import math
+from keras.saving import register_keras_serializable # type: ignore
+import tensorflow.keras.backend as K # type: ignore
+from tcn import TCN
+
+@register_keras_serializable(package="Custom")
+class RegisteredTCN(TCN):
+    pass
+
+@register_keras_serializable(package="Custom")
+def squeeze_dim1(x):
+    return K.squeeze(x, axis=1)
 
 # === Load metadata once ===
 with open("../data/graph/sites_metadata.json") as f:
@@ -32,12 +43,21 @@ def load_prediction_components(model_name):
     if model_name in _model_cache:
         return _model_cache[model_name]
 
-    model = load_model(f"../models/{model_name}_model.keras", compile=False)
+    if model_name == "tcn":
+        model = load_model(
+            f"../models/{model_name}_model.keras", 
+            compile=False,
+            custom_objects={"RegisteredTCN": RegisteredTCN}
+        )
+    else:
+        model = load_model(f"../models/{model_name}_model.keras", compile=False)
+
     scaler = joblib.load(f"../models/{model_name}_scaler.pkl")
     encoder = joblib.load(f"../models/{model_name}_scats_encoder.pkl")
 
     _model_cache[model_name] = (model, scaler, encoder)
     return model, scaler, encoder
+
 
 def flow_to_travel_time(volume, distance_km=1.0):
     try:

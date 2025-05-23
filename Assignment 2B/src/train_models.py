@@ -5,10 +5,23 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from tensorflow.keras.models import Sequential, Model #type:ignore
-from tensorflow.keras.layers import LSTM, GRU, Dense, Input, Embedding, Concatenate, Conv1D, Flatten #type:ignore
+from tensorflow.keras.layers import LSTM, GRU, Dense, Input, Embedding, Concatenate, Lambda #type:ignore
 from tensorflow.keras.callbacks import EarlyStopping #type:ignore
+import tensorflow.keras.backend as K #type:ignore
 import joblib
 from datetime import timedelta
+from keras.saving import register_keras_serializable #type:ignore
+import tensorflow.keras.backend as K #type:ignore
+from tcn import TCN
+
+
+@register_keras_serializable(package="Custom")
+class RegisteredTCN(TCN):
+    pass
+
+@register_keras_serializable(package="Custom")
+def squeeze_dim1(x):
+    return K.squeeze(x, axis=1)
 
 # === CONFIG ===
 CSV_PATH = "../data/processed/Oct_2006_Boorondara_Traffic_Flow_Data.csv"
@@ -78,15 +91,33 @@ def build_gru_model(num_scats):
     out = Dense(1)(merged)
     return Model(inputs=[seq_input, scats_input], outputs=out)
 
-def build_tcn_model(num_scats):
-    seq_input = Input(shape=(SEQ_LENGTH, 1))
-    scats_input = Input(shape=(1,))
-    embed = Embedding(input_dim=num_scats, output_dim=4)(scats_input)
-    embed_flat = Dense(1)(embed)
-    conv_out = Conv1D(64, kernel_size=3, padding="causal", activation="relu")(seq_input)
-    flat = Flatten()(conv_out)
-    merged = Concatenate()([flat, embed_flat[:, 0]])
+def build_tcn_model(num_scats, seq_length):
+    # Input 1: Traffic sequence 
+    seq_input = Input(shape=(seq_length, 1))
+
+    # Input 2: SCATS site ID
+    scats_input = Input(shape=(1,)) 
+
+    # Embed the SCATS site ID
+    embed = Embedding(input_dim=num_scats, output_dim=4)(scats_input) 
+    embed_flat = Dense(1)(embed) 
+    embed_squeezed = Lambda(squeeze_dim1, name="squeeze_dim1")(embed_flat)  
+
+    # Temporal Convolutional Network for sequence modeling
+    tcn_out = RegisteredTCN(
+        nb_filters=64,
+        kernel_size=3,
+        dilations=[1, 2, 4, 8],
+        padding="causal",
+        return_sequences=False
+    )(seq_input)  # shape: (batch, features)
+
+    # Merge TCN output with SCATS site embedding
+    merged = Concatenate()([tcn_out, embed_squeezed])
+
+    # Final regression output: estimated travel time
     out = Dense(1)(merged)
+
     return Model(inputs=[seq_input, scats_input], outputs=out)
 
 def train_and_evaluate(model_name, build_fn, X_seq_train, X_scats_train, y_train,
@@ -190,7 +221,7 @@ if __name__ == "__main__":
                                           X_seq_test, X_scats_test, y_test, ts_test,
                                           scaler, scats_encoder))
     if args.model in ["tcn", "all"]:
-        results.append(train_and_evaluate("tcn", build_tcn_model,
+        results.append(train_and_evaluate("tcn", lambda n: build_tcn_model(n, SEQ_LENGTH),
                                           X_seq_train, X_scats_train, y_train,
                                           X_seq_test, X_scats_test, y_test, ts_test,
                                           scaler, scats_encoder))
